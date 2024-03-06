@@ -1,0 +1,9 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nalgebra = { version = "0.32", features = ["serde-serialize"] }
+rmp-serde = "1.1"
+serde = { version = "1.0", features = ["derive"] }

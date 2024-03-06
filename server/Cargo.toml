@@ -1,0 +1,24 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7", features = ["ws"] }
+futures = "0.3.30"
+futures-util = { version = "0.3.30", features = ["sink"] }
+http = "1.0"
+nalgebra = "0.32"
+rmp-serde = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+tower-http = { version = "0.5", features = ["auth", "cors"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.7", features = ["v4"] }
+
+[dependencies.tokio]
+version = "1.36"
+features = ["macros", "rt-multi-thread", "sync", "time"]
+
+[dependencies.shared]
+path = "../shared"

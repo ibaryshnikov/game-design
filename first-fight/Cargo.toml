@@ -1,0 +1,21 @@
+[package]
+name = "first-fight"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+futures = "0.3.30"
+iced = { version = "0.12", features = ["canvas", "tokio"] }
+nalgebra = { version = "0.32", features = ["serde-serialize"] }
+tokio-tungstenite = "0.21.0"
+
+# game input library for rust
+#gilrs = "0.10.2"
+
+[dependencies.tokio]
+version = "1.0"
+features = []
+
+[dependencies.shared]
+path = "../shared"
