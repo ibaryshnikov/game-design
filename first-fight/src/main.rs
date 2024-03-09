@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures::channel::mpsc;
 use iced::executor;
 use iced::widget::canvas::{self, Cache, Canvas, Geometry};
-use iced::widget::{button, text, Column, Row};
+use iced::widget::{button, column, row, text, Row};
 use iced::{keyboard, mouse};
 use iced::{
     Alignment, Application, Command, Element, Length, Rectangle, Renderer, Settings, Subscription,
@@ -159,10 +159,10 @@ impl Application for App {
 
     fn view(&self) -> Element<Message> {
         match self.state {
-            FightState::Pending => self.draw_pending(),
+            FightState::Pending => self.draw_pending().into(),
             FightState::Action => self.draw_action(),
-            FightState::Win => self.draw_win(),
-            FightState::Loss => self.draw_loss(),
+            FightState::Win => self.draw_win().into(),
+            FightState::Loss => self.draw_loss().into(),
         }
     }
 
@@ -172,38 +172,41 @@ impl Application for App {
             iced::Event::Keyboard(keyboard_event) => Some(keyboard_event),
             _ => None,
         })
-        .map(|event| match event {
-            keyboard::Event::KeyPressed { key, .. } => (|| {
-                let action = match key.as_ref() {
-                    Key::Character("W" | "w") => Move::Up,
-                    Key::Character("S" | "s") => Move::Down,
-                    Key::Character("A" | "a") => Move::Left,
-                    Key::Character("D" | "d") => Move::Right,
-                    Key::Named(Named::Shift) => {
-                        return Some(Message::HeroDash);
-                    }
-                    Key::Named(Named::Space) => {
-                        return Some(Message::HeroAttack);
-                    }
-                    _ => return None,
-                };
-                Some(Message::MoveStart(action))
-            })(),
-            keyboard::Event::KeyReleased { key, .. } => (|| {
-                let action = match key.as_ref() {
-                    Key::Character("W" | "w") => Move::Up,
-                    Key::Character("S" | "s") => Move::Down,
-                    Key::Character("A" | "a") => Move::Left,
-                    Key::Character("D" | "d") => Move::Right,
-                    _ => return None,
-                };
-                Some(Message::MoveStop(action))
-            })(),
-            _ => None,
-        })
-        .map(|event| event.unwrap_or_else(|| Message::None));
+        .map(key_event_to_message);
         let ws_events = ws::connect();
         Subscription::batch([timer, movements, ws_events])
+    }
+}
+
+fn key_event_to_message(event: keyboard::Event) -> Message {
+    match event {
+        keyboard::Event::KeyPressed { key, .. } => {
+            let action = match key.as_ref() {
+                Key::Character("W" | "w") => Move::Up,
+                Key::Character("S" | "s") => Move::Down,
+                Key::Character("A" | "a") => Move::Left,
+                Key::Character("D" | "d") => Move::Right,
+                Key::Named(Named::Shift) => {
+                    return Message::HeroDash;
+                }
+                Key::Named(Named::Space) => {
+                    return Message::HeroAttack;
+                }
+                _ => return Message::None,
+            };
+            Message::MoveStart(action)
+        }
+        keyboard::Event::KeyReleased { key, .. } => {
+            let action = match key.as_ref() {
+                Key::Character("W" | "w") => Move::Up,
+                Key::Character("S" | "s") => Move::Down,
+                Key::Character("A" | "a") => Move::Left,
+                Key::Character("D" | "d") => Move::Right,
+                _ => return Message::None,
+            };
+            Message::MoveStop(action)
+        }
+        _ => Message::None,
     }
 }
 
@@ -232,42 +235,39 @@ impl<Message> canvas::Program<Message> for App {
 }
 
 impl App {
-    fn draw_pending(&self) -> Element<Message> {
-        let column = Column::new()
-            .push(text("Welcome to the game!").size(30))
-            .push(button("Start").on_press(Message::Start))
-            .push(button("Connect ws").on_press(Message::ConnectWs))
-            .align_items(Alignment::Center)
-            .width(Length::Fill);
-        Row::new()
-            .push(column)
+    fn draw_pending(&self) -> Row<Message> {
+        let column = column![
+            text("Welcome to the game!").size(30),
+            button("Start").on_press(Message::Start),
+            button("Connect ws").on_press(Message::ConnectWs),
+        ]
+        .align_items(Alignment::Center)
+        .width(Length::Fill);
+        row![column]
             .align_items(Alignment::Center)
             .height(Length::Fill)
-            .into()
     }
-    fn draw_win(&self) -> Element<Message> {
-        let column = Column::new()
-            .push(text("You won, grab some loot!").size(30))
-            .push(button("Try again").on_press(Message::Retry))
-            .align_items(Alignment::Center)
-            .width(Length::Fill);
-        Row::new()
-            .push(column)
+    fn draw_win(&self) -> Row<Message> {
+        let column = column![
+            text("You won, grab some loot!").size(30),
+            button("Try again").on_press(Message::Retry),
+        ]
+        .align_items(Alignment::Center)
+        .width(Length::Fill);
+        row![column]
             .align_items(Alignment::Center)
             .height(Length::Fill)
-            .into()
     }
-    fn draw_loss(&self) -> Element<Message> {
-        let column = Column::new()
-            .push(text("GAME OVER").size(40))
-            .push(button("Try again").on_press(Message::Retry))
-            .align_items(Alignment::Center)
-            .width(Length::Fill);
-        Row::new()
-            .push(column)
+    fn draw_loss(&self) -> Row<Message> {
+        let column = column![
+            text("GAME OVER").size(40),
+            button("Try again").on_press(Message::Retry),
+        ]
+        .align_items(Alignment::Center)
+        .width(Length::Fill);
+        row![column]
             .align_items(Alignment::Center)
             .height(Length::Fill)
-            .into()
     }
     fn draw_action(&self) -> Element<Message> {
         Canvas::new(self)

@@ -251,11 +251,16 @@ impl AttackInfo {
         self.time_passed > self.time_to_complete + self.aftercast
     }
     pub fn width_radian(&self) -> f32 {
-        match self.kind {
+        let mut radian = match self.kind {
             AttackKind::Narrow => 0.2,
             AttackKind::Wide => 1.7,
             AttackKind::CustomAngle(angle) => angle,
             _ => 0.2,
+        };
+        if let AttackOrder::RightToLeft | AttackOrder::RightThenLeft = self.order {
+            -radian
+        } else {
+            radian
         }
     }
     pub fn get_base_angle(&self) -> f32 {
@@ -269,14 +274,9 @@ impl AttackInfo {
     pub fn get_angles(&self, angle: f32, width_radian: f32) -> (f32, f32) {
         match self.order {
             AttackOrder::CloseToFar => (angle - width_radian, angle + width_radian),
-            AttackOrder::LeftToRight => {
+            AttackOrder::LeftToRight | AttackOrder::RightToLeft => {
                 let start_angle = angle - width_radian;
                 let end_angle = start_angle + 2.0 * width_radian * self.percent_completed;
-                (start_angle, end_angle)
-            }
-            AttackOrder::RightToLeft => {
-                let end_angle = angle + width_radian;
-                let start_angle = end_angle - 2.0 * width_radian * self.percent_completed;
                 (start_angle, end_angle)
             }
             AttackOrder::CenterToSides => {
