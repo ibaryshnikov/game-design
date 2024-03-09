@@ -10,6 +10,7 @@ use shared::attack::{
 use shared::character::Character;
 use shared::check_hit;
 use shared::hero::{DashCooldown, DashInfo};
+use shared::types::KeyActionKind;
 
 use crate::attack::AttackView;
 use crate::boss::Boss;
@@ -262,23 +263,16 @@ impl Hero {
         // let attack_info = AttackInfo::wide(position, self.melee_attack_distance);
         self.attacking = Some(AttackView::new(attack_info));
     }
-    pub fn handle_move_keydown(&mut self, movement: Move) {
+    pub fn handle_move_action(&mut self, kind: KeyActionKind, movement: Move) {
+        let moving = match kind {
+            KeyActionKind::Pressed => true,
+            KeyActionKind::Released => false,
+        };
         match movement {
-            Move::Left => self.moving.left = true,
-            Move::Right => self.moving.right = true,
-            Move::Up => self.moving.up = true,
-            Move::Down => self.moving.down = true,
-        }
-        if self.is_moving() {
-            self.direction = self.get_direction();
-        }
-    }
-    pub fn handle_move_keyup(&mut self, movement: Move) {
-        match movement {
-            Move::Left => self.moving.left = false,
-            Move::Right => self.moving.right = false,
-            Move::Up => self.moving.up = false,
-            Move::Down => self.moving.down = false,
+            Move::Left => self.moving.left = moving,
+            Move::Right => self.moving.right = moving,
+            Move::Up => self.moving.up = moving,
+            Move::Down => self.moving.down = moving,
         }
         if self.is_moving() {
             self.direction = self.get_direction();

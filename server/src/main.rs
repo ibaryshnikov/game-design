@@ -12,7 +12,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 use uuid::Uuid;
 
-use shared::types::{Message as ServerMessage, Move};
+use shared::types::{KeyActionKind, Message as ServerMessage, Move};
 
 mod boss;
 mod broadcaster;
@@ -93,7 +93,7 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
         tracing::error!("Failed to send WebSocket message to broadcaster: {e}");
     }
 
-    let message = ServerMessage::MoveKeyUp(Move::Up);
+    let message = ServerMessage::Move(KeyActionKind::Pressed, Move::Up);
     let data = message.to_vec();
     let ws_message = Message::Binary(data);
     let message = Box::new(broadcaster::Message::SendMessage(id, ws_message));

@@ -4,6 +4,7 @@ pub mod attack;
 pub mod character;
 pub mod hero;
 pub mod position;
+pub mod server;
 pub mod types;
 
 use attack::AttackInfo;

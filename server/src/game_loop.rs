@@ -3,7 +3,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time;
 
-use shared::types::{Message, Move};
+use shared::types::Message;
 
 use crate::broadcaster;
 use crate::hero::Hero;
@@ -47,8 +47,7 @@ async fn timer() {}
 async fn handle_message(id: u128, message: Message) {
     println!("Handle message in game loop for {id}");
     match message {
-        Message::MoveKeyUp(action) => {}
-        Message::MoveKeyDown(action) => {}
+        Message::Move(kind, action) => {}
         Message::HeroDash => {}
         Message::HeroAttack => {}
         Message::Hero(hero) => {}

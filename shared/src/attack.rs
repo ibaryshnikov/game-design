@@ -251,7 +251,7 @@ impl AttackInfo {
         self.time_passed > self.time_to_complete + self.aftercast
     }
     pub fn width_radian(&self) -> f32 {
-        let mut radian = match self.kind {
+        let radian = match self.kind {
             AttackKind::Narrow => 0.2,
             AttackKind::Wide => 1.7,
             AttackKind::CustomAngle(angle) => angle,

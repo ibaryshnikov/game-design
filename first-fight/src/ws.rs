@@ -7,9 +7,9 @@ use tokio::io::AsyncRead;
 use tokio_tungstenite::tungstenite::{Error as WsError, Message as WsMessage};
 use tokio_tungstenite::WebSocketStream;
 
-use shared::types::Message as SharedMessage;
+use shared::types::{KeyActionKind, Message as SharedMessage, Move};
 
-use crate::{Message, Move};
+use crate::Message;
 
 #[derive(Debug, Clone)]
 pub enum LocalMessage {
@@ -17,8 +17,7 @@ pub enum LocalMessage {
     Connected,
     Disconnected,
     User(String),
-    MoveStart(Move),
-    MoveStop(Move),
+    Move(KeyActionKind, Move),
     HeroDash,
     HeroAttack,
 }
@@ -50,8 +49,10 @@ impl fmt::Display for LocalMessage {
                 write!(f, "Connection lost... Retrying...")
             }
             LocalMessage::User(message) => write!(f, "{message}"),
-            LocalMessage::MoveStart(movement) => write!(f, "MoveStart {:?}", movement),
-            LocalMessage::MoveStop(movement) => write!(f, "MoveStop {:?}", movement),
+            LocalMessage::Move(kind, movement) => match kind {
+                KeyActionKind::Pressed => write!(f, "Move key pressed {:?}", movement),
+                KeyActionKind::Released => write!(f, "Move key released {:?}", movement),
+            },
             LocalMessage::HeroDash => write!(f, "HeroDash"),
             LocalMessage::HeroAttack => write!(f, "HeroAttack"),
         }
@@ -128,18 +129,9 @@ where
 {
     while let Some(message) = reader.next().await {
         match message {
-            LocalMessage::MoveStart(movement) => {
-                println!("Local message MoveStart: {:?}", movement);
-                let message = SharedMessage::MoveKeyUp(movement);
-                let data = message.to_vec();
-                let ws_message = WsMessage::Binary(data);
-                if let Err(e) = write_half.send(ws_message).await {
-                    println!("Error sending WsMessage: {:?}", e);
-                }
-            }
-            LocalMessage::MoveStop(movement) => {
-                println!("Local message MoveStop: {:?}", movement);
-                let message = SharedMessage::MoveKeyDown(movement);
+            LocalMessage::Move(kind, movement) => {
+                println!("Local message Move kind {:?}: {:?}", kind, movement);
+                let message = SharedMessage::Move(kind, movement);
                 let data = message.to_vec();
                 let ws_message = WsMessage::Binary(data);
                 if let Err(e) = write_half.send(ws_message).await {

@@ -10,10 +10,15 @@ pub enum Move {
     Right,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum KeyActionKind {
+    Pressed,
+    Released,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Message {
-    MoveKeyUp(Move),
-    MoveKeyDown(Move),
+    Move(KeyActionKind, Move),
     HeroDash,
     HeroAttack,
     Hero(Hero),

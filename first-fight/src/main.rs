@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use futures::channel::mpsc;
@@ -12,7 +13,7 @@ use iced::{
 use keyboard::key::{Key, Named};
 use nalgebra::Point2;
 
-use shared::types::Move;
+use shared::types::{KeyActionKind, Move};
 
 mod attack;
 mod boss;
@@ -36,8 +37,7 @@ enum Message {
     Tick,
     Start,
     Retry,
-    MoveStart(Move),
-    MoveStop(Move),
+    Move(KeyActionKind, Move),
     HeroDash,
     HeroAttack,
     None,
@@ -54,6 +54,8 @@ struct App {
     cache: Cache,
     boss: Boss,
     hero: Hero,
+    characters: HashMap<u128, Hero>,
+    npc_list: HashMap<u128, Boss>,
     state: FightState,
     ws_sender: Option<mpsc::Sender<ws::LocalMessage>>,
 }
@@ -71,6 +73,8 @@ impl Application for App {
             cache: Cache::new(),
             boss,
             hero,
+            characters: HashMap::new(),
+            npc_list: HashMap::new(),
             state: FightState::Pending,
             ws_sender: None,
         };
@@ -103,16 +107,10 @@ impl Application for App {
             Message::WsMessage(text) => {
                 println!("Got ws message: {}", text);
             }
-            Message::MoveStart(movement) => {
-                self.hero.handle_move_keydown(movement.clone());
+            Message::Move(kind, movement) => {
+                self.hero.handle_move_action(kind.clone(), movement.clone());
                 if let Some(sender) = &mut self.ws_sender {
-                    let _ = sender.start_send(ws::LocalMessage::MoveStart(movement));
-                }
-            }
-            Message::MoveStop(movement) => {
-                self.hero.handle_move_keyup(movement.clone());
-                if let Some(sender) = &mut self.ws_sender {
-                    let _ = sender.start_send(ws::LocalMessage::MoveStop(movement));
+                    let _ = sender.start_send(ws::LocalMessage::Move(kind, movement));
                 }
             }
             Message::HeroDash => {
@@ -194,7 +192,7 @@ fn key_event_to_message(event: keyboard::Event) -> Message {
                 }
                 _ => return Message::None,
             };
-            Message::MoveStart(action)
+            Message::Move(KeyActionKind::Pressed, action)
         }
         keyboard::Event::KeyReleased { key, .. } => {
             let action = match key.as_ref() {
@@ -204,7 +202,7 @@ fn key_event_to_message(event: keyboard::Event) -> Message {
                 Key::Character("D" | "d") => Move::Right,
                 _ => return Message::None,
             };
-            Message::MoveStop(action)
+            Message::Move(KeyActionKind::Released, action)
         }
         _ => Message::None,
     }
