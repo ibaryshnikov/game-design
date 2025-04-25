@@ -1,7 +1,7 @@
 use std::time::Instant;
 
-use iced::widget::canvas::{stroke, Frame, Path, Stroke};
-use iced::{Color, Size};
+use iced_core::{Color, Size};
+use iced_widget::canvas::{stroke, Frame, Path, Stroke};
 use nalgebra::{Point2, Vector2};
 
 use shared::attack::{
@@ -29,6 +29,7 @@ pub struct Hero {
     pub position: Point2<f32>,
     direction: Vector2<f32>,
     moving: Moving,
+    last_key_up: Option<Instant>,
     last_tick: Instant,
     pub melee_attack_distance: f32,
     pub ranged_attack_distance: f32,
@@ -61,6 +62,7 @@ impl Hero {
                 up: false,
                 down: false,
             },
+            last_key_up: None,
             last_tick: Instant::now(),
             melee_attack_distance: 100.0,
             ranged_attack_distance: 300.0,
@@ -100,7 +102,7 @@ impl Hero {
     pub fn draw_body(&self, frame: &mut Frame) {
         if let Some(dash_info) = &self.dashing {
             let percent_completed = dash_info.percent_completed();
-            let position = iced::Point::new(
+            let position = iced_core::Point::new(
                 self.position.x + dash_info.direction.x * 150.0 * percent_completed,
                 self.position.y + dash_info.direction.y * 150.0 * percent_completed,
             );
@@ -118,7 +120,10 @@ impl Hero {
             return;
         }
         let path = Path::new(|b| {
-            b.circle(iced::Point::new(self.position.x, self.position.y), 20.0);
+            b.circle(
+                iced_core::Point::new(self.position.x, self.position.y),
+                20.0,
+            );
         });
         frame.stroke(
             &path,
@@ -137,7 +142,7 @@ impl Hero {
         } else {
             direction.normalize_mut();
         }
-        let start = iced::Point::new(
+        let start = iced_core::Point::new(
             self.position.x + direction.x * 10.0,
             self.position.y + direction.y * 10.0,
         );
@@ -145,11 +150,11 @@ impl Hero {
             b.circle(start, 5.0);
         });
 
-        frame.fill(&path, Color::new(0.0, 1.0, 0.0, 1.0));
+        frame.fill(&path, Color::from_rgb8(0, 255, 0));
     }
     pub fn draw_health_bar(&self, frame: &mut Frame) {
         // self.draw_test_data(frame);
-        let start = iced::Point::new(10.0, 10.0);
+        let start = iced_core::Point::new(10.0, 10.0);
         let bar_width = 200.0;
         let bar_height = 20.0;
 
@@ -159,7 +164,7 @@ impl Hero {
             b.rectangle(start, size);
         });
 
-        frame.fill(&path, Color::new(1.0, 0.0, 0.0, 1.0));
+        frame.fill(&path, Color::from_rgb8(255, 0, 0));
 
         // draw hp left as green
         let path = Path::new(|b| {
@@ -168,13 +173,13 @@ impl Hero {
             b.rectangle(start, size);
         });
 
-        frame.fill(&path, Color::new(0.0, 1.0, 0.0, 1.0));
+        frame.fill(&path, Color::from_rgb8(0, 255, 0));
     }
     fn draw_test_data(&self, frame: &mut Frame) {
-        let point_a = iced::Point::new(512.0, 384.0);
-        let point_b = iced::Point::new(362.60272, 370.567);
-        let point_c = iced::Point::new(379.62704, 313.4493);
-        let center = iced::Point::new(402.8994, 376.09946);
+        let point_a = iced_core::Point::new(512.0, 384.0);
+        let point_b = iced_core::Point::new(362.60272, 370.567);
+        let point_c = iced_core::Point::new(379.62704, 313.4493);
+        let center = iced_core::Point::new(402.8994, 376.09946);
         let radius = 20.0;
         let path = Path::new(|b| {
             b.move_to(point_a);
@@ -184,14 +189,14 @@ impl Hero {
             b.move_to(center);
             b.circle(center, radius);
         });
-        frame.fill(&path, Color::new(0.0, 0.0, 1.0, 1.0));
+        frame.fill(&path, Color::from_rgb8(0, 0, 255));
     }
     fn is_moving(&self) -> bool {
         let moving_x = self.moving.left ^ self.moving.right;
         let moving_y = self.moving.up ^ self.moving.down;
         moving_x || moving_y
     }
-    fn get_direction(&self) -> Vector2<f32> {
+    fn update_direction(&mut self) {
         let mut direction = Vector2::new(0.0, 0.0);
         if self.moving.up {
             direction.y -= 1.0;
@@ -205,7 +210,7 @@ impl Hero {
         if self.moving.right {
             direction.x += 1.0;
         }
-        direction
+        self.direction = direction;
     }
     pub fn dash(&mut self) {
         if self.attacking.is_some() {
@@ -217,7 +222,7 @@ impl Hero {
         if self.dashing.is_some() || self.dash_cooldown.is_some() {
             return;
         }
-        let mut direction = self.get_direction();
+        let mut direction = self.direction;
         if direction.x.abs() < 0.000_001 && direction.y.abs() < 0.000_001 {
             // no direction, x & y are 0
             return;
@@ -264,22 +269,33 @@ impl Hero {
         self.attacking = Some(AttackView::new(attack_info));
     }
     pub fn handle_move_action(&mut self, kind: KeyActionKind, movement: Move) {
-        let moving = match kind {
-            KeyActionKind::Pressed => true,
-            KeyActionKind::Released => false,
+        let moving = match movement {
+            Move::Left => &mut self.moving.left,
+            Move::Right => &mut self.moving.right,
+            Move::Up => &mut self.moving.up,
+            Move::Down => &mut self.moving.down,
         };
-        match movement {
-            Move::Left => self.moving.left = moving,
-            Move::Right => self.moving.right = moving,
-            Move::Up => self.moving.up = moving,
-            Move::Down => self.moving.down = moving,
-        }
-        if self.is_moving() {
-            self.direction = self.get_direction();
-        }
+        match kind {
+            KeyActionKind::Pressed => {
+                *moving = true;
+                self.update_direction();
+            }
+            KeyActionKind::Released => {
+                *moving = false;
+                self.last_key_up = Some(Instant::now());
+            }
+        };
     }
     pub fn update(&mut self, boss: &mut Boss) {
         self.update_position();
+        if let Some(time_passed) = self.last_key_up {
+            if time_passed.elapsed().as_millis() > 100 {
+                self.last_key_up = None;
+                if self.is_moving() {
+                    self.update_direction();
+                }
+            }
+        }
         if let Some(cooldown) = &self.dash_cooldown {
             if cooldown.started.elapsed().as_millis() >= cooldown.duration {
                 self.dash_cooldown = None;

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::body::Bytes;
+use axum::extract::ws::{Message, Utf8Bytes, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::{routing, Router};
@@ -66,7 +67,11 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) ->
 
 async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
     let (mut write, mut read) = socket.split();
-    if write.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
+    if write
+        .send(Message::Ping(Bytes::from(vec![1, 2, 3])))
+        .await
+        .is_ok()
+    {
         println!("Pinged!");
     } else {
         println!("Couldn't send ping to !");
@@ -87,7 +92,7 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
         }
     }
 
-    let ws_message = Message::Text("Hello from axum and ws".to_owned());
+    let ws_message = Message::Text(Utf8Bytes::from("Hello from axum and ws".to_owned()));
     let message = Box::new(broadcaster::Message::SendMessage(id, ws_message));
     if let Err(e) = sender.send(LoopMessage::Broadcaster(message)).await {
         tracing::error!("Failed to send WebSocket message to broadcaster: {e}");
@@ -95,7 +100,7 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
 
     let message = ServerMessage::Move(KeyActionKind::Pressed, Move::Up);
     let data = message.to_vec();
-    let ws_message = Message::Binary(data);
+    let ws_message = Message::Binary(Bytes::from(data));
     let message = Box::new(broadcaster::Message::SendMessage(id, ws_message));
     if let Err(e) = sender.send(LoopMessage::Broadcaster(message)).await {
         tracing::error!("Failed to send WebSocket message to broadcaster: {e}");

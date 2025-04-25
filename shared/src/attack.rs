@@ -1,6 +1,8 @@
+use std::fmt::{self, Display};
 use std::time::Instant;
 
 use nalgebra::{Point2, Vector2};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct SelectionInfo {
@@ -8,27 +10,43 @@ pub struct SelectionInfo {
     pub selected_at: Instant,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum MissileShape {
     Circle,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MissileInfo {
     pub number_of_missiles: u8,
     pub shape: MissileShape,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum AttackKind {
     Narrow,
     Wide,
     CustomAngle(f32),
     Circle,
-    Missiles(Box<MissileInfo>),
+    // Missiles(Box<MissileInfo>),
 }
 
-#[derive(Debug)]
+impl AttackKind {
+    pub fn options() -> [AttackKind; 4] {
+        use AttackKind::*;
+        [Narrow, Wide, CustomAngle(0.0), Circle]
+    }
+}
+
+impl Display for AttackKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AttackKind::CustomAngle(_) => write!(f, "CustomAngle"),
+            other => write!(f, "{:?}", other),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum AttackOrder {
     LeftToRight,
     RightToLeft,
@@ -41,10 +59,62 @@ pub enum AttackOrder {
     ProjectileFromCaster,
 }
 
-#[derive(Debug)]
+impl AttackOrder {
+    pub const fn options() -> [AttackOrder; 9] {
+        use AttackOrder::*;
+        [
+            LeftToRight,
+            RightToLeft,
+            LeftThenRight,
+            RightThenLeft,
+            CloseToFar,
+            CenterToSides,
+            SidesToCenter,
+            ExpandingCircle,
+            ProjectileFromCaster,
+        ]
+    }
+}
+
+impl Display for AttackOrder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub enum AttackState {
     Selected,
     Attacking,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AttackConstructor {
+    pub position: Point2<f32>,
+    pub direction: Vector2<f32>,
+    pub delay: u128,
+    pub time_to_complete: u128, // ms
+    pub aftercast: u128,
+    pub kind: AttackKind,
+    pub order: AttackOrder,
+    pub distance: f32,
+    pub state: AttackState,
+}
+
+impl Default for AttackConstructor {
+    fn default() -> Self {
+        AttackConstructor {
+            position: Point2::default(),
+            direction: Vector2::default(),
+            delay: 0,
+            time_to_complete: 0,
+            aftercast: 0,
+            kind: AttackKind::Narrow,
+            order: AttackOrder::CloseToFar,
+            distance: 0.0,
+            state: AttackState::Selected,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -64,6 +134,36 @@ pub struct AttackInfo {
 }
 
 impl AttackInfo {
+    fn from_constructor(constructor: AttackConstructor) -> Self {
+        let AttackConstructor {
+            position,
+            direction,
+            delay,
+            time_to_complete,
+            aftercast,
+            kind,
+            order,
+            distance,
+            state,
+        } = constructor;
+        let started_at = Instant::now();
+        let time_passed = 0;
+        let percent_completed = 0.0;
+        AttackInfo {
+            position,
+            direction,
+            started_at,
+            time_passed,
+            delay,
+            time_to_complete,
+            aftercast,
+            percent_completed,
+            kind,
+            order,
+            distance,
+            state,
+        }
+    }
     fn new(
         position: Point2<f32>,
         direction: Vector2<f32>,

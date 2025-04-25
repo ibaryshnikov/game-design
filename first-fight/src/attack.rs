@@ -1,5 +1,5 @@
-use iced::widget::canvas::{self, stroke, Frame, Path, Stroke};
-use iced::Color;
+use iced_core::Color;
+use iced_widget::canvas::{self, stroke, Frame, Path, Stroke};
 
 use shared::attack::{AttackInfo, AttackOrder, AttackState};
 
@@ -33,7 +33,7 @@ impl AttackView {
         let angle = self.attack_info.get_base_angle();
 
         let actor_position = self.attack_info.position;
-        let start = iced::Point::new(actor_position.x, actor_position.y);
+        let start = iced_core::Point::new(actor_position.x, actor_position.y);
 
         let start_angle = angle - width_radian;
         let end_angle = angle + width_radian;
@@ -42,7 +42,7 @@ impl AttackView {
         frame.stroke(
             &path,
             Stroke {
-                style: stroke::Style::Solid(Color::new(0.0, 1.0, 0.0, 1.0)),
+                style: stroke::Style::Solid(Color::from_rgb8(0, 255, 0)),
                 width: 3.0,
                 ..Stroke::default()
             },
@@ -53,7 +53,7 @@ impl AttackView {
         let width_radian = info.width_radian();
         let radius = info.get_radius();
         let angle = info.get_base_angle();
-        let start = iced::Point::new(info.position.x, info.position.y);
+        let start = iced_core::Point::new(info.position.x, info.position.y);
 
         if info.percent_completed < 0.5 {
             let start_angle = angle - width_radian;
@@ -85,7 +85,7 @@ impl AttackView {
         let angle = info.get_base_angle();
 
         let (start_angle, end_angle) = info.get_angles(angle, width_radian);
-        let start = iced::Point::new(info.position.x, info.position.y);
+        let start = iced_core::Point::new(info.position.x, info.position.y);
         draw_circle_segment(frame, start, radius, start_angle, end_angle);
 
         if let AttackOrder::SidesToCenter = info.order {
@@ -98,17 +98,17 @@ impl AttackView {
 
 fn draw_circle_segment(
     frame: &mut Frame,
-    center: iced::Point,
+    center: iced_core::Point,
     radius: f32,
     start_angle: f32,
     end_angle: f32,
 ) {
     let path = circle_segment(center, radius, start_angle, end_angle);
-    frame.fill(&path, Color::new(1.0, 0.0, 0.0, 1.0));
+    frame.fill(&path, Color::from_rgb8(255, 0, 0));
 }
 
-fn circle_segment(center: iced::Point, radius: f32, start_angle: f32, end_angle: f32) -> Path {
-    let side = iced::Point::new(
+fn circle_segment(center: iced_core::Point, radius: f32, start_angle: f32, end_angle: f32) -> Path {
+    let side = iced_core::Point::new(
         center.x + radius * start_angle.cos(),
         center.y + radius * start_angle.sin(),
     );

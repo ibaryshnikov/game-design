@@ -1,19 +1,20 @@
-use futures::channel::mpsc;
-use futures::sink::{Sink, SinkExt};
-use futures::stream::{SplitStream, StreamExt};
-use iced::subscription::{self, Subscription};
 use std::fmt;
-use tokio::io::AsyncRead;
-use tokio_tungstenite::tungstenite::{Error as WsError, Message as WsMessage};
-use tokio_tungstenite::WebSocketStream;
+
+use bytes::Bytes;
+use futures::sink::{Sink, SinkExt};
+use futures::stream::StreamExt;
+use iced_winit::winit::event_loop::EventLoopProxy;
+use tokio::net::TcpStream;
+use tokio::sync::mpsc::{self, Sender};
+use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
+use tungstenite::{Error as WsError, Message as WsMessage};
 
 use shared::types::{KeyActionKind, Message as SharedMessage, Move};
 
-use crate::Message;
+use crate::{Message, UserEvent};
 
 #[derive(Debug, Clone)]
 pub enum LocalMessage {
-    ConnectWs,
     Connected,
     Disconnected,
     User(String),
@@ -43,7 +44,7 @@ impl LocalMessage {
 impl fmt::Display for LocalMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LocalMessage::ConnectWs => write!(f, "Connect to ws command"),
+            // LocalMessage::ConnectWs => write!(f, "Connect to ws command"),
             LocalMessage::Connected => write!(f, "Connected successfully!"),
             LocalMessage::Disconnected => {
                 write!(f, "Connection lost... Retrying...")
@@ -61,126 +62,100 @@ impl fmt::Display for LocalMessage {
 
 const SERVER: &str = "ws://127.0.0.1:8080/ws";
 
-pub fn connect() -> Subscription<Message> {
-    struct Connect;
+pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
+    let (sender, mut receiver) = mpsc::channel(100);
+    if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsChannel(sender))) {
+        println!("Error sending Message in ws: {}", e);
+    }
 
-    subscription::channel(
-        std::any::TypeId::of::<Connect>(),
-        100,
-        |mut output| async move {
-            let mut state = State::Disconnected;
+    let mut websocket;
 
-            println!("Initiating ws subscription");
-            let (sender, mut receiver) = mpsc::channel(100);
-            let _ = output.send(Message::WsChannel(sender)).await;
+    match tokio_tungstenite::connect_async(SERVER).await {
+        Ok((ws, _)) => {
+            websocket = ws;
+            println!("WebSocket connected");
+            if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsConnected)) {
+                println!("Error sending Message in ws: {}", e);
+            }
+        }
+        Err(e) => {
+            println!("Error connecting to WebSocket: {}", e);
+            if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsDisconnected)) {
+                tracing::error!("Error sending Message in ws: {}", e);
+            }
+            return;
+        }
+    }
 
-            let maybe_message = receiver.next().await;
-            if let Some(message) = maybe_message {
-                match message {
-                    LocalMessage::ConnectWs => {
-                        println!("Connecting to WebSocket");
-                        match tokio_tungstenite::connect_async(SERVER).await {
-                            Ok((websocket, _)) => {
-                                let _ = output.send(Message::WsConnected).await;
-                                let (write, read) = websocket.split();
-
-                                tokio::spawn(handle_socket_writer(write, receiver));
-
-                                state = State::Connected(read);
-                            }
-                            Err(_) => {
-                                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
-                                let _ = output.send(Message::WsDisconnected).await;
-                            }
+    loop {
+        tokio::select! {
+            maybe_message = websocket.next() => {
+                match maybe_message {
+                    Some(Ok(message)) => {
+                        println!("Gow websocket message: {:?}", message);
+                        handle_ws_message(&proxy, message).await;
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("Error reading WebSocket message: {}", e);
+                    }
+                    None => {
+                        println!("WebSocket closed by the server");
+                        if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsDisconnected)) {
+                            tracing::error!("Error sending Message in ws: {}", e);
+                            break;
                         }
                     }
-                    other => {
-                        panic!("Unexpected local message: {:?}", other);
-                    }
                 }
             }
-
-            loop {
-                match &mut state {
-                    State::Disconnected => {
-                        let _ = output.send(Message::WsDisconnected).await;
-                        state = State::Stale;
-                    }
-                    State::Connected(read_half) => {
-                        while let Some(message) = read_half.next().await {
-                            println!("Got ws message: {:?}", message);
-                        }
-                        let _ = output.send(Message::WsDisconnected).await;
-                    }
-                    State::Stale => {
-                        println!("ws connection became stale");
-                        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
-                    }
+            maybe_message = receiver.recv() => {
+                if let Some(message) = maybe_message {
+                    println!("Got local message in ws: {:?}", message);
+                    handle_local_message(&mut websocket, message).await;
+                } else {
+                    println!("Ws channel has been closed");
+                    break;
                 }
             }
-        },
-    )
-}
-
-async fn handle_socket_writer<S>(mut write_half: S, mut reader: mpsc::Receiver<LocalMessage>)
-where
-    S: Sink<WsMessage, Error = WsError> + Unpin,
-{
-    while let Some(message) = reader.next().await {
-        match message {
-            LocalMessage::Move(kind, movement) => {
-                println!("Local message Move kind {:?}: {:?}", kind, movement);
-                let message = SharedMessage::Move(kind, movement);
-                let data = message.to_vec();
-                let ws_message = WsMessage::Binary(data);
-                if let Err(e) = write_half.send(ws_message).await {
-                    println!("Error sending WsMessage: {:?}", e);
-                }
-            }
-            LocalMessage::HeroDash => {
-                println!("Local message HeroDash");
-                let message = SharedMessage::HeroDash;
-                let data = message.to_vec();
-                let ws_message = WsMessage::Binary(data);
-                if let Err(e) = write_half.send(ws_message).await {
-                    println!("Error sending WsMessage: {:?}", e);
-                }
-            }
-            LocalMessage::HeroAttack => {
-                println!("Local message HeroAttack");
-                let message = SharedMessage::HeroAttack;
-                let data = message.to_vec();
-                let ws_message = WsMessage::Binary(data);
-                if let Err(e) = write_half.send(ws_message).await {
-                    println!("Error sending WsMessage: {:?}", e);
-                }
-            }
-            other => println!("Got some other message in ws subscription: {:?}", other),
         }
     }
 }
 
-pub async fn connect_ws_once() {
-    let res = connect_ws().await;
-    if let Err(e) = res {
-        println!("Error connecting to ws server: {:?}", e);
-    }
-}
+type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-async fn connect_ws() -> anyhow::Result<()> {
-    let (ws_stream, _response) = tokio_tungstenite::connect_async(SERVER).await?;
-    let (_write, mut read) = ws_stream.split();
-    while let Some(maybe_message) = read.next().await {
-        match maybe_message {
-            Ok(message) => handle_ws_message(message),
-            Err(e) => println!("Error reading from WebSocket: {}", e),
+async fn handle_local_message(websocket: &mut WebSocket, message: LocalMessage) {
+    match message {
+        LocalMessage::Move(kind, movement) => {
+            println!("Local message Move kind {:?}: {:?}", kind, movement);
+            let message = SharedMessage::Move(kind, movement);
+            let bytes = Bytes::from(message.to_vec());
+            let ws_message = WsMessage::Binary(bytes);
+            if let Err(e) = websocket.send(ws_message).await {
+                println!("Error sending WsMessage: {:?}", e);
+            }
         }
+        LocalMessage::HeroDash => {
+            println!("Local message HeroDash");
+            let message = SharedMessage::HeroDash;
+            let bytes = Bytes::from(message.to_vec());
+            let ws_message = WsMessage::Binary(bytes);
+            if let Err(e) = websocket.send(ws_message).await {
+                println!("Error sending WsMessage: {:?}", e);
+            }
+        }
+        LocalMessage::HeroAttack => {
+            println!("Local message HeroAttack");
+            let message = SharedMessage::HeroAttack;
+            let bytes = Bytes::from(message.to_vec());
+            let ws_message = WsMessage::Binary(bytes);
+            if let Err(e) = websocket.send(ws_message).await {
+                println!("Error sending WsMessage: {:?}", e);
+            }
+        }
+        other => println!("Got some other message from WebSocket: {:?}", other),
     }
-    Ok(())
 }
 
-fn handle_ws_message(message: WsMessage) {
+async fn handle_ws_message(_proxy: &EventLoopProxy<UserEvent>, message: WsMessage) {
     match message {
         WsMessage::Text(text) => {
             println!("Got text message: {}", text);
@@ -194,10 +169,40 @@ fn handle_ws_message(message: WsMessage) {
     }
 }
 
-#[derive(Debug)]
-#[allow(clippy::large_enum_variant)]
-enum State<S: AsyncRead + Unpin> {
-    Disconnected,
-    Connected(SplitStream<WebSocketStream<S>>),
-    Stale,
+async fn handle_socket_writer<S>(mut write_half: S, mut reader: mpsc::Receiver<LocalMessage>)
+where
+    S: Sink<WsMessage, Error = WsError> + Unpin,
+{
+    while let Some(message) = reader.recv().await {
+        match message {
+            LocalMessage::Move(kind, movement) => {
+                println!("Local message Move kind {:?}: {:?}", kind, movement);
+                let message = SharedMessage::Move(kind, movement);
+                let bytes = Bytes::from(message.to_vec());
+                let ws_message = WsMessage::Binary(bytes);
+                if let Err(e) = write_half.send(ws_message).await {
+                    println!("Error sending WsMessage: {:?}", e);
+                }
+            }
+            LocalMessage::HeroDash => {
+                println!("Local message HeroDash");
+                let message = SharedMessage::HeroDash;
+                let bytes = Bytes::from(message.to_vec());
+                let ws_message = WsMessage::Binary(bytes);
+                if let Err(e) = write_half.send(ws_message).await {
+                    println!("Error sending WsMessage: {:?}", e);
+                }
+            }
+            LocalMessage::HeroAttack => {
+                println!("Local message HeroAttack");
+                let message = SharedMessage::HeroAttack;
+                let bytes = Bytes::from(message.to_vec());
+                let ws_message = WsMessage::Binary(bytes);
+                if let Err(e) = write_half.send(ws_message).await {
+                    println!("Error sending WsMessage: {:?}", e);
+                }
+            }
+            other => println!("Got some other message in ws subscription: {:?}", other),
+        }
+    }
 }

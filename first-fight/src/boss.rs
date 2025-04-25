@@ -1,7 +1,7 @@
 use std::time::Instant;
 
-use iced::widget::canvas::{stroke, Frame, Path, Stroke};
-use iced::{Color, Size};
+use iced_core::{Color, Size};
+use iced_widget::canvas::{stroke, Frame, Path, Stroke};
 use nalgebra::Point2;
 
 use shared::attack::{AttackInfo, AttackKind, RecoverInfo};
@@ -90,6 +90,14 @@ impl Boss {
             self.attacking = None;
         }
     }
+    // if the boss attacks' are loaded from the external file
+    // and look like Vec<AttackConstructor>
+    // then it can be like
+    // fn select_attack(
+    //     attacks: Vec<AttackConstructor>,
+    //     self_position: Position,
+    //     player_position: Position,
+    // ) -> AttackConstructor
     fn check_new_attack(&mut self, character_position: Point2<f32>) {
         if self.attacking.is_some() || self.recovering.is_some() {
             return;
@@ -147,7 +155,7 @@ impl Boss {
         self.hp as f32 / self.max_hp as f32
     }
     pub fn draw_body(&self, frame: &mut Frame) {
-        let position = iced::Point::new(self.position.x, self.position.y);
+        let position = iced_core::Point::new(self.position.x, self.position.y);
         let path = Path::new(|b| {
             b.circle(position, 30.0);
         });
@@ -162,7 +170,7 @@ impl Boss {
     }
     pub fn draw_health_bar(&self, frame: &mut Frame) {
         // self.draw_test_data(frame);
-        let start = iced::Point::new(100.0, 700.0);
+        let start = iced_core::Point::new(100.0, 700.0);
         let bar_width = 800.0;
         let bar_height = 10.0;
 
@@ -172,7 +180,7 @@ impl Boss {
             b.rectangle(start, size);
         });
 
-        frame.fill(&path, Color::new(0.0, 0.0, 0.0, 1.0));
+        frame.fill(&path, Color::from_rgb8(0, 0, 0));
 
         // draw hp left as green
         let path = Path::new(|b| {
@@ -181,7 +189,7 @@ impl Boss {
             b.rectangle(start, size);
         });
 
-        frame.fill(&path, Color::new(1.0, 0.0, 0.0, 1.0));
+        frame.fill(&path, Color::from_rgb8(255, 0, 0));
     }
     pub fn draw_attack(&self, frame: &mut Frame) {
         if let Some(attack) = &self.attacking {
