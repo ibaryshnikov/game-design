@@ -265,7 +265,6 @@ impl Hero {
             distance: self.melee_attack_distance,
             state: AttackState::Selected,
         };
-        // let attack_info = AttackInfo::wide(position, self.melee_attack_distance);
         self.attacking = Some(AttackView::new(attack_info));
     }
     pub fn handle_move_action(&mut self, kind: KeyActionKind, movement: Move) {

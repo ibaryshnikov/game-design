@@ -187,7 +187,6 @@ impl AttackInfo {
         }
     }
     pub fn narrow(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
-        // AttackInfo::new(position, distance, AttackKind::Narrow, AttackOrder::CloseToFar)
         AttackInfo {
             position,
             direction,
@@ -268,7 +267,6 @@ impl AttackInfo {
         }
     }
     pub fn split(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
-        // AttackInfo::new(position, distance, AttackKind::Wide, AttackOrder::CenterToSides)
         AttackInfo {
             position,
             direction,
@@ -285,7 +283,6 @@ impl AttackInfo {
         }
     }
     pub fn closing(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
-        // AttackInfo::new(position, distance, AttackKind::Wide, AttackOrder::SidesToCenter)
         AttackInfo {
             position,
             direction,

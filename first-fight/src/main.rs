@@ -5,23 +5,21 @@ use std::time::Duration;
 
 use iced_wgpu::graphics::Viewport;
 use iced_wgpu::{wgpu, Engine, Renderer};
+use iced_widget::canvas::{self, Cache, Canvas, Geometry};
+use iced_widget::{button, column, container, row, text, Row};
 use iced_winit::clipboard::Clipboard;
 use iced_winit::core::{mouse, renderer, window, Event, Font, Pixels, Size, Theme};
+use iced_winit::core::{Alignment, Element, Length, Rectangle};
 use iced_winit::runtime::user_interface::{self, UserInterface};
 use iced_winit::{conversion, winit};
+use nalgebra::Point2;
+use tokio::sync::mpsc;
 use wgpu::{Device, Instance, Queue, TextureFormat};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, KeyEvent, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::keyboard::{KeyCode, ModifiersState, PhysicalKey};
 use winit::window::{Window, WindowId};
-
-use iced_widget::canvas::{self, Cache, Canvas, Geometry};
-use iced_widget::{button, column, container, row, text, Row};
-use iced_winit::core::{Alignment, Element, Length, Rectangle};
-
-use nalgebra::Point2;
-use tokio::sync::mpsc;
 
 use shared::types::{KeyActionKind, Move};
 
