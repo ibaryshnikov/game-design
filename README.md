@@ -12,7 +12,3 @@ cargo run
 cd first-fight
 cargo run
 ```
-
-## Licence
-
-Proprietary, currently a private project
