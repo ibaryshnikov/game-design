@@ -3,6 +3,7 @@ use nalgebra::Point2;
 pub mod attack;
 pub mod character;
 pub mod hero;
+pub mod npc;
 pub mod position;
 pub mod server;
 pub mod types;
