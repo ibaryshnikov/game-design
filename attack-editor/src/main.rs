@@ -1,11 +1,23 @@
 use iced::widget::{button, column, container, pick_list, row, text, text_input};
-use iced::{Alignment, Application, Command, Element, Length, Settings, Subscription, Theme};
+use iced::{window, Alignment, Element, Length, Renderer, Settings, Task, Theme};
+use iced_widget::graphics::{self, compositor};
+use iced_winit::Program;
+
 use serde::{Deserialize, Serialize};
 
 use shared::attack::{AttackConstructor, AttackKind, AttackOrder};
 
 fn main() {
-    App::run(Settings::default()).expect("Should run the app")
+    let app = App { attack: None };
+    let window_settings = Some(window::Settings::default());
+
+    iced_winit::program::run::<App, <Renderer as compositor::Default>::Compositor>(
+        Settings::default().into(),
+        graphics::Settings::default(),
+        window_settings,
+        app,
+    )
+    .expect("Should run the app");
 }
 
 #[derive(Debug, Clone)]
@@ -32,20 +44,20 @@ fn write_file(attack: &Option<AttackConstructor>) {
     std::fs::write("data/attack.json", contents).expect("Should write AttackConstructor to a file");
 }
 
-impl Application for App {
+impl Program for App {
     type Executor = iced::executor::Default;
     type Message = Message;
     type Theme = Theme;
-    type Flags = ();
+    type Renderer = Renderer;
+    type Flags = Self;
 
-    fn new(_flags: ()) -> (Self, Command<Message>) {
-        let app = App { attack: None };
-        (app, Command::none())
+    fn new(app: Self) -> (Self, Task<Message>) {
+        (app, Task::none())
     }
-    fn title(&self) -> String {
+    fn title(&self, _window: window::Id) -> String {
         "Attack editor".into()
     }
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ReadFile => {
                 let contents = read_file();
@@ -59,7 +71,7 @@ impl Application for App {
             Message::ChangeDelay(value) => {
                 let parsed = value.parse::<u128>().ok();
                 let Some(parsed) = parsed else {
-                    return Command::none();
+                    return Task::none();
                 };
                 if let Some(attack) = &mut self.attack {
                     attack.delay = parsed;
@@ -76,14 +88,14 @@ impl Application for App {
                 }
             }
         }
-        Command::none()
+        Task::none()
     }
-    fn view(&self) -> Element<Message> {
+    fn view(&self, _window: window::Id) -> Element<Message> {
         let mut contents = column![
             button("Read").on_press(Message::ReadFile),
             button("Write").on_press(Message::WriteFile),
         ]
-        .align_items(Alignment::Center)
+        .align_x(Alignment::Center)
         .spacing(10);
 
         if let Some(attack) = &self.attack {
@@ -93,7 +105,7 @@ impl Application for App {
                     text_input("Attack delay", &format!("{}", attack.delay))
                         .on_input(Message::ChangeDelay),
                 ]
-                .align_items(Alignment::Center)
+                .align_y(Alignment::Center)
                 .spacing(10),
                 row![
                     text("Order"),
@@ -104,7 +116,7 @@ impl Application for App {
                     )
                     .placeholder("Attack order"),
                 ]
-                .align_items(Alignment::Center)
+                .align_y(Alignment::Center)
                 .spacing(10),
                 row![
                     text("Kind"),
@@ -115,23 +127,23 @@ impl Application for App {
                     )
                     .placeholder("Attack kind")
                 ]
-                .align_items(Alignment::Center)
+                .align_y(Alignment::Center)
                 .spacing(10),
             ]
-            .align_items(Alignment::Start)
+            .align_x(Alignment::Start)
             .spacing(10);
             let attack_details = container(attack_details_column).width(300);
             contents = contents.push(attack_details);
         }
 
         container(contents)
-            .center_x()
-            .center_y()
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
     }
-    fn theme(&self) -> Theme {
+    fn theme(&self, _window: window::Id) -> Theme {
         Theme::TokyoNight
     }
 }
