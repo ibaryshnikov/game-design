@@ -42,16 +42,27 @@ enum NpcMessage {
 }
 
 #[derive(Debug, Clone)]
+enum LevelMessage {
+    ReadFile,
+    WriteFile,
+    SelectNpc(i32),
+    AddNpc(i32),
+    RemoveNpc(usize),
+}
+
+#[derive(Debug, Clone)]
 enum Message {
     SelectKind(EditorKind),
     Attack(AttackMessage),
     Npc(NpcMessage),
+    Level(LevelMessage),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 enum EditorKind {
     Attack,
     Npc,
+    Level,
 }
 
 impl Display for EditorKind {
@@ -60,11 +71,18 @@ impl Display for EditorKind {
     }
 }
 
+#[derive(Default, Debug)]
+struct Level {
+    npc_list: Vec<i32>,
+    selected: Option<i32>,
+}
+
 #[derive(Debug)]
 enum EditorState {
     NotSelected,
     Attack(Box<Option<AttackConstructor>>),
     Npc(Box<Option<NpcConstructor>>),
+    Level(Box<Option<Level>>),
 }
 
 struct App {
@@ -266,6 +284,96 @@ fn view_npc(npc: &Option<NpcConstructor>) -> Element<NpcMessage> {
     contents.into()
 }
 
+fn read_file_level() -> Option<Level> {
+    let contents = std::fs::read("data/level.json").ok()?;
+    let npc_list = serde_json::from_slice(&contents).ok()?;
+    let level = Level {
+        npc_list,
+        selected: None,
+    };
+    Some(level)
+}
+
+fn write_file_level(level: &Option<Level>) {
+    let Some(level) = level else { return };
+    let contents = serde_json::to_vec(&level.npc_list).expect("Should encode Level");
+    std::fs::write("data/level.json", contents).expect("Should write Level to a file");
+}
+
+fn update_level(level: &mut Option<Level>, message: LevelMessage) {
+    match message {
+        LevelMessage::ReadFile => {
+            let contents = read_file_level();
+            if contents.is_some() {
+                *level = contents;
+            } else {
+                *level = Some(Level::default())
+            }
+        }
+        LevelMessage::WriteFile => write_file_level(level),
+        LevelMessage::SelectNpc(id) => {
+            if let Some(level) = level {
+                level.selected = Some(id);
+            }
+        }
+        LevelMessage::AddNpc(id) => {
+            if let Some(level) = level {
+                level.npc_list.push(id);
+            }
+        }
+        LevelMessage::RemoveNpc(index) => {
+            if let Some(level) = level {
+                if index >= level.npc_list.len() {
+                    return;
+                }
+                level.npc_list.remove(index);
+            }
+        }
+    }
+}
+
+fn view_level(level: &Option<Level>) -> Element<LevelMessage> {
+    let mut contents = column![
+        button("Read").on_press(LevelMessage::ReadFile),
+        button("Write").on_press(LevelMessage::WriteFile),
+    ]
+    .align_x(Alignment::Center)
+    .spacing(10);
+
+    if let Some(level) = level {
+        let mut npc_list = column![].align_x(Alignment::Center)
+        .spacing(10);
+        for (index, npc_id) in level.npc_list.iter().enumerate() {
+            let npc_row = row![
+                text(format!("Npc id: {}", npc_id)),
+                button("delete").on_press(LevelMessage::RemoveNpc(index)),
+            ].spacing(10);
+            npc_list = npc_list.push(npc_row);
+        }
+        let message_add = level.selected.map(LevelMessage::AddNpc);
+        let add_npc_row = row![
+            pick_list(
+                [1, 2, 3],
+                level.selected,
+                LevelMessage::SelectNpc,
+            ),
+            button("add").on_press_maybe(message_add),
+        ].spacing(10);
+        let level_details_column = column![
+            text("Add npc:"),
+            add_npc_row,
+            text("Level npc list:"),
+            npc_list,
+        ]
+        .align_x(Alignment::Start)
+        .spacing(10);
+        let level_details = container(level_details_column).width(300);
+        contents = contents.push(level_details);
+    }
+
+    contents.into()
+}
+
 impl Program for App {
     type Executor = iced::executor::Default;
     type Message = Message;
@@ -277,13 +385,14 @@ impl Program for App {
         (app, Task::none())
     }
     fn title(&self, _window: window::Id) -> String {
-        "Attack editor".into()
+        "Editor".into()
     }
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::SelectKind(kind) => match kind {
                 EditorKind::Attack => self.state = EditorState::Attack(Box::new(None)),
                 EditorKind::Npc => self.state = EditorState::Npc(Box::new(None)),
+                EditorKind::Level => self.state = EditorState::Level(Box::new(None)),
             },
             Message::Attack(message) => {
                 if let EditorState::Attack(attack) = &mut self.state {
@@ -295,6 +404,11 @@ impl Program for App {
                     update_npc(npc, message);
                 }
             }
+            Message::Level(message) => {
+                if let EditorState::Level(level) = &mut self.state {
+                    update_level(level, message);
+                }
+            }
         }
         Task::none()
     }
@@ -303,11 +417,12 @@ impl Program for App {
             EditorState::NotSelected => None,
             EditorState::Attack(_) => Some(EditorKind::Attack),
             EditorState::Npc(_) => Some(EditorKind::Npc),
+            EditorState::Level(_) => Some(EditorKind::Level),
         };
         let editor_kind_picker = row![
             text("Editor kind"),
             pick_list(
-                [EditorKind::Attack, EditorKind::Npc],
+                [EditorKind::Attack, EditorKind::Npc, EditorKind::Level],
                 selected,
                 Message::SelectKind
             )
@@ -325,6 +440,10 @@ impl Program for App {
             }
             EditorState::Npc(npc) => {
                 let element = view_npc(npc).map(Message::Npc);
+                contents = contents.push(element);
+            }
+            EditorState::Level(level) => {
+                let element = view_level(level).map(Message::Level);
                 contents = contents.push(element);
             }
         }
