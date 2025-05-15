@@ -90,6 +90,7 @@ pub enum AttackState {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AttackConstructor {
+    pub name: String,
     pub position: Point2<f32>,
     pub direction: Vector2<f32>,
     pub delay: u128,
@@ -101,9 +102,19 @@ pub struct AttackConstructor {
     pub state: AttackState,
 }
 
+impl AttackConstructor {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            ..Self::default()
+        }
+    }
+}
+
 impl Default for AttackConstructor {
     fn default() -> Self {
-        AttackConstructor {
+        Self {
+            name: String::new(),
             position: Point2::default(),
             direction: Vector2::default(),
             delay: 0,
@@ -145,6 +156,7 @@ impl AttackInfo {
             order,
             distance,
             state,
+            ..
         } = constructor;
         let started_at = Instant::now();
         let time_passed = 0;

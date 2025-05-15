@@ -107,11 +107,12 @@ impl Page {
             Message::ChangeNewEntryName(name) => self.new_entry_name = name,
             Message::CreateNew => {
                 self.data.last_id += 1;
-                let new_attack = AttackConstructor::default();
+                let name = std::mem::take(&mut self.new_entry_name);
+                let new_attack = AttackConstructor::new(name.clone());
                 crate::attack::save_by_id(&new_attack, self.data.last_id);
                 let new_entry = AttackInfo {
                     id: self.data.last_id,
-                    name: std::mem::take(&mut self.new_entry_name),
+                    name,
                     status: EntryStatus::Active,
                 };
                 self.data.list.push(new_entry);
@@ -148,7 +149,7 @@ impl Page {
                     .width(portion(1))
                     .align_x(Alignment::Center),
                 make_rule(1, Alignment::Start),
-                text(item.name.clone()).width(portion(5)),
+                text(&item.name).width(portion(5)),
                 make_rule(1, Alignment::End),
                 button(text("Edit").align_x(Alignment::Center))
                     .on_press(Message::Edit(item.id))

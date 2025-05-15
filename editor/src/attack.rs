@@ -81,6 +81,7 @@ impl Page {
         .spacing(10);
 
         let attack_details_column = column![
+            row![text("Name:"), text(&self.data.name)].spacing(10),
             row![
                 text("Delay"),
                 text_input("Attack delay", &format!("{}", self.data.delay))
