@@ -109,7 +109,7 @@ impl Page {
                 self.data.last_id += 1;
                 let name = std::mem::take(&mut self.new_entry_name);
                 let new_attack = AttackConstructor::new(name.clone());
-                crate::attack::save_by_id(&new_attack, self.data.last_id);
+                super::item::save_by_id(&new_attack, self.data.last_id);
                 let new_entry = AttackInfo {
                     id: self.data.last_id,
                     name,
@@ -134,7 +134,7 @@ impl Page {
 
         let new_entry_row = row![
             text_input("New entry name", &self.new_entry_name)
-                .on_input(Message::ChangeNewEntryName),
+            .on_input(Message::ChangeNewEntryName),
             button("Create new").on_press(Message::CreateNew),
         ];
         let mut details_column = column![
@@ -146,17 +146,17 @@ impl Page {
         for item in self.data.list.iter().filter(is_active) {
             let item_row = row![
                 text(format!("{}", item.id))
-                    .width(portion(1))
-                    .align_x(Alignment::Center),
+                .width(portion(1))
+                .align_x(Alignment::Center),
                 make_rule(1, Alignment::Start),
                 text(&item.name).width(portion(5)),
                 make_rule(1, Alignment::End),
                 button(text("Edit").align_x(Alignment::Center))
-                    .on_press(Message::Edit(item.id))
-                    .width(portion(3)),
+                .on_press(Message::Edit(item.id))
+                .width(portion(3)),
                 button(text("Delete").align_x(Alignment::Center))
-                    .on_press(Message::HideEntry(item.id))
-                    .width(portion(3)),
+                .on_press(Message::HideEntry(item.id))
+                .width(portion(3)),
             ]
             .spacing(5)
             .padding([0, 5])
@@ -186,7 +186,7 @@ fn portion(value: u16) -> Length {
 
 fn make_rule(part: u16, alignment: Alignment) -> Container<'static, Message> {
     container(vertical_rule(5))
-        .align_x(alignment)
-        .width(portion(part))
-        .height(23)
+    .align_x(alignment)
+    .width(portion(part))
+    .height(23)
 }

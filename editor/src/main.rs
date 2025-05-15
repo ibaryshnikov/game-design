@@ -8,7 +8,6 @@ use iced_winit::Program;
 use shared::npc::NpcConstructor;
 
 mod attack;
-mod attack_list;
 mod level;
 mod npc;
 
@@ -33,8 +32,8 @@ fn main() {
 enum Message {
     SelectKind(EditorKind),
     EditAttack(u32),
-    Attack(attack::Message),
-    AttackList(attack_list::Message),
+    Attack(attack::item::Message),
+    AttackList(attack::list::Message),
     Npc(npc::Message),
     Level(level::Message),
 }
@@ -62,8 +61,8 @@ impl Display for EditorKind {
 
 enum EditorState {
     NotSelected,
-    Attack(Box<attack::Page>),
-    AttackList(Box<attack_list::Page>),
+    Attack(Box<attack::item::Page>),
+    AttackList(Box<attack::list::Page>),
     Npc(Box<Option<NpcConstructor>>),
     Level(Box<Option<Level>>),
 }
@@ -90,13 +89,13 @@ impl Program for App {
             Message::SelectKind(kind) => match kind {
                 EditorKind::Attack => (), // do nothing here
                 EditorKind::AttackList => {
-                    self.state = EditorState::AttackList(Box::new(attack_list::Page::load()))
+                    self.state = EditorState::AttackList(Box::new(attack::list::Page::load()))
                 }
                 EditorKind::Npc => self.state = EditorState::Npc(Box::new(None)),
                 EditorKind::Level => self.state = EditorState::Level(Box::new(None)),
             },
             Message::EditAttack(id) => {
-                self.state = EditorState::Attack(Box::new(attack::Page::load_by_id(id)))
+                self.state = EditorState::Attack(Box::new(attack::item::Page::load_by_id(id)))
             }
             Message::Attack(message) => {
                 if let EditorState::Attack(attack) = &mut self.state {
