@@ -5,10 +5,10 @@ use iced::{window, Alignment, Element, Length, Renderer, Settings, Task, Theme};
 use iced_widget::graphics::{self, compositor};
 use iced_winit::Program;
 
-use shared::attack::AttackConstructor;
 use shared::npc::NpcConstructor;
 
 mod attack;
+mod attack_list;
 mod level;
 mod npc;
 
@@ -32,7 +32,9 @@ fn main() {
 #[derive(Debug, Clone)]
 enum Message {
     SelectKind(EditorKind),
+    EditAttack(u32),
     Attack(attack::Message),
+    AttackList(attack_list::Message),
     Npc(npc::Message),
     Level(level::Message),
 }
@@ -40,8 +42,16 @@ enum Message {
 #[derive(Debug, Clone, PartialEq)]
 enum EditorKind {
     Attack,
+    AttackList,
     Npc,
     Level,
+}
+
+impl EditorKind {
+    const fn items() -> [EditorKind; 4] {
+        use EditorKind::*;
+        [Attack, AttackList, Npc, Level]
+    }
 }
 
 impl Display for EditorKind {
@@ -50,10 +60,10 @@ impl Display for EditorKind {
     }
 }
 
-#[derive(Debug)]
 enum EditorState {
     NotSelected,
-    Attack(Box<Option<AttackConstructor>>),
+    Attack(Box<attack::Page>),
+    AttackList(Box<attack_list::Page>),
     Npc(Box<Option<NpcConstructor>>),
     Level(Box<Option<Level>>),
 }
@@ -78,13 +88,26 @@ impl Program for App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::SelectKind(kind) => match kind {
-                EditorKind::Attack => self.state = EditorState::Attack(Box::new(None)),
+                EditorKind::Attack => (), // do nothing here
+                EditorKind::AttackList => {
+                    self.state = EditorState::AttackList(Box::new(attack_list::Page::load()))
+                }
                 EditorKind::Npc => self.state = EditorState::Npc(Box::new(None)),
                 EditorKind::Level => self.state = EditorState::Level(Box::new(None)),
             },
+            Message::EditAttack(id) => {
+                self.state = EditorState::Attack(Box::new(attack::Page::load_by_id(id)))
+            }
             Message::Attack(message) => {
                 if let EditorState::Attack(attack) = &mut self.state {
-                    attack::update(attack, message);
+                    attack.update(message);
+                }
+            }
+            Message::AttackList(message) => {
+                if let EditorState::AttackList(page) = &mut self.state {
+                    if let Some(new_message) = page.update(message) {
+                        return self.update(new_message);
+                    }
                 }
             }
             Message::Npc(message) => {
@@ -101,17 +124,11 @@ impl Program for App {
         Task::none()
     }
     fn view(&self, _window: window::Id) -> Element<Message> {
-        let selected = match self.state {
-            EditorState::NotSelected => None,
-            EditorState::Attack(_) => Some(EditorKind::Attack),
-            EditorState::Npc(_) => Some(EditorKind::Npc),
-            EditorState::Level(_) => Some(EditorKind::Level),
-        };
         let editor_kind_picker = row![
             text("Editor kind"),
             pick_list(
-                [EditorKind::Attack, EditorKind::Npc, EditorKind::Level],
-                selected,
+                EditorKind::items(),
+                self.selected_kind(),
                 Message::SelectKind
             )
             .placeholder("Editor kind")
@@ -122,8 +139,12 @@ impl Program for App {
 
         match &self.state {
             EditorState::NotSelected => (),
-            EditorState::Attack(attack) => {
-                let element = attack::view(attack).map(Message::Attack);
+            EditorState::Attack(page) => {
+                let element = page.view().map(Message::Attack);
+                contents = contents.push(element);
+            }
+            EditorState::AttackList(page) => {
+                let element = page.view().map(Message::AttackList);
                 contents = contents.push(element);
             }
             EditorState::Npc(npc) => {
@@ -149,5 +170,17 @@ impl Program for App {
     }
     fn theme(&self, _window: window::Id) -> Theme {
         Theme::TokyoNight
+    }
+}
+
+impl App {
+    fn selected_kind(&self) -> Option<EditorKind> {
+        match self.state {
+            EditorState::NotSelected => None,
+            EditorState::Attack(_) => Some(EditorKind::Attack),
+            EditorState::AttackList(_) => Some(EditorKind::AttackList),
+            EditorState::Npc(_) => Some(EditorKind::Npc),
+            EditorState::Level(_) => Some(EditorKind::Level),
+        }
     }
 }

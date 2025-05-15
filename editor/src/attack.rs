@@ -3,6 +3,20 @@ use iced::{Alignment, Element};
 
 use shared::attack::{AttackConstructor, AttackKind, AttackOrder};
 
+pub struct Page {
+    id: u32,
+    data: AttackConstructor,
+}
+
+impl Page {
+    pub fn load_by_id(id: u32) -> Self {
+        Page {
+            id,
+            data: load_by_id(id),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     ReadFile,
@@ -23,52 +37,53 @@ fn write_file(attack: &Option<AttackConstructor>) {
     std::fs::write("data/attack.json", contents).expect("Should write AttackConstructor to a file");
 }
 
-pub fn update(attack: &mut Option<AttackConstructor>, message: Message) {
-    match message {
-        Message::ReadFile => {
-            let contents = read_file();
-            if contents.is_some() {
-                *attack = contents;
-            } else {
-                *attack = Some(AttackConstructor::default())
+fn load_by_id(id: u32) -> AttackConstructor {
+    let file_path = format!("data/attack_{}.json", id);
+    let contents = std::fs::read(file_path).expect("Should read AttackConstructor from a file");
+    serde_json::from_slice(&contents).expect("Should decond AttackConstructor")
+}
+
+pub fn save_by_id(attack: &AttackConstructor, id: u32) {
+    let file_path = format!("data/attack_{}.json", id);
+    let contents = serde_json::to_vec(attack).expect("Should encode AttackConstructor");
+    std::fs::write(file_path, contents).expect("Should write AttackConstructor to a file");
+}
+
+impl Page {
+    pub fn update(&mut self, message: Message) {
+        match message {
+            Message::ReadFile => {
+                self.data = load_by_id(self.id);
             }
-        }
-        Message::WriteFile => write_file(attack),
-        Message::ChangeDelay(value) => {
-            let parsed = value.parse::<u128>().ok();
-            let Some(parsed) = parsed else {
-                return;
-            };
-            if let Some(attack) = attack {
-                attack.delay = parsed;
+            Message::WriteFile => save_by_id(&self.data, self.id),
+            Message::ChangeDelay(value) => {
+                let parsed = value.parse::<u128>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.delay = parsed;
             }
-        }
-        Message::ChangeOrder(order) => {
-            if let Some(attack) = attack {
-                attack.order = order;
+            Message::ChangeOrder(order) => {
+                self.data.order = order;
             }
-        }
-        Message::ChangeKind(kind) => {
-            if let Some(attack) = attack {
-                attack.kind = kind;
+            Message::ChangeKind(kind) => {
+                self.data.kind = kind;
             }
         }
     }
-}
 
-pub fn view(attack: &Option<AttackConstructor>) -> Element<Message> {
-    let mut contents = column![
-        button("Read").on_press(Message::ReadFile),
-        button("Write").on_press(Message::WriteFile),
-    ]
-    .align_x(Alignment::Center)
-    .spacing(10);
+    pub fn view(&self) -> Element<Message> {
+        let mut contents = column![
+            button("Reload from disk").on_press(Message::ReadFile),
+            button("Save").on_press(Message::WriteFile),
+        ]
+        .align_x(Alignment::Center)
+        .spacing(10);
 
-    if let Some(attack) = attack {
         let attack_details_column = column![
             row![
                 text("Delay"),
-                text_input("Attack delay", &format!("{}", attack.delay))
+                text_input("Attack delay", &format!("{}", self.data.delay))
                     .on_input(Message::ChangeDelay),
             ]
             .align_y(Alignment::Center)
@@ -77,7 +92,7 @@ pub fn view(attack: &Option<AttackConstructor>) -> Element<Message> {
                 text("Order"),
                 pick_list(
                     AttackOrder::options(),
-                    Some(attack.order.clone()),
+                    Some(self.data.order.clone()),
                     Message::ChangeOrder
                 )
                 .placeholder("Attack order"),
@@ -88,7 +103,7 @@ pub fn view(attack: &Option<AttackConstructor>) -> Element<Message> {
                 text("Kind"),
                 pick_list(
                     AttackKind::options(),
-                    Some(attack.kind.clone()),
+                    Some(self.data.kind.clone()),
                     Message::ChangeKind
                 )
                 .placeholder("Attack kind")
@@ -100,7 +115,7 @@ pub fn view(attack: &Option<AttackConstructor>) -> Element<Message> {
         .spacing(10);
         let attack_details = container(attack_details_column).width(300);
         contents = contents.push(attack_details);
-    }
 
-    contents.into()
+        contents.into()
+    }
 }
