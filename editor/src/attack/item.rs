@@ -85,7 +85,7 @@ impl Page {
             row![
                 text("Delay"),
                 text_input("Attack delay", &format!("{}", self.data.delay))
-                .on_input(Message::ChangeDelay),
+                    .on_input(Message::ChangeDelay),
             ]
             .align_y(Alignment::Center)
             .spacing(10),
@@ -93,8 +93,8 @@ impl Page {
                 text("Order"),
                 pick_list(
                     AttackOrder::options(),
-                          Some(self.data.order.clone()),
-                          Message::ChangeOrder
+                    Some(self.data.order.clone()),
+                    Message::ChangeOrder
                 )
                 .placeholder("Attack order"),
             ]
@@ -104,8 +104,8 @@ impl Page {
                 text("Kind"),
                 pick_list(
                     AttackKind::options(),
-                          Some(self.data.kind.clone()),
-                          Message::ChangeKind
+                    Some(self.data.kind.clone()),
+                    Message::ChangeKind
                 )
                 .placeholder("Attack kind")
             ]

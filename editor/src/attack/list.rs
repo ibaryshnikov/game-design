@@ -1,22 +1,14 @@
-use iced::widget::{button, column, container, row, text, text_input, vertical_rule, Container};
+use iced::widget::{
+    button, column, container, horizontal_space, row, text, text_input, vertical_rule, Container,
+};
 use iced::{Alignment, Element, Length};
 use serde::{Deserialize, Serialize};
 
 use shared::attack::AttackConstructor;
 
-#[derive(Default)]
 pub struct Page {
     data: AttackList,
     new_entry_name: String,
-}
-
-impl Page {
-    pub fn load() -> Self {
-        Page {
-            data: load_data(),
-            new_entry_name: String::new(),
-        }
-    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -41,7 +33,6 @@ struct AttackInfo {
 #[derive(Debug, Clone)]
 pub enum Message {
     ReadFile,
-    WriteFile,
     ShowEntry(u32),
     HideEntry(u32),
     ChangeNewEntryName(String),
@@ -86,21 +77,20 @@ fn hide_entry(attack_list: &mut AttackList, id: u32) {
 }
 
 fn load_data() -> AttackList {
-    if let Some(contents) = read_file() {
-        contents
-    } else {
-        AttackList::default()
-    }
+    read_file().unwrap_or_default()
 }
 
 impl Page {
-    pub fn update(&mut self, message: Message) -> Option<crate::Message> {
+    pub fn load() -> Self {
+        Self {
+            data: load_data(),
+            new_entry_name: String::new(),
+        }
+    }
+    pub fn update(&mut self, message: Message) -> Option<super::Message> {
         match message {
             Message::ReadFile => {
                 self.data = load_data();
-            }
-            Message::WriteFile => {
-                write_file(&self.data);
             }
             Message::ShowEntry(id) => show_entry(&mut self.data, id),
             Message::HideEntry(id) => hide_entry(&mut self.data, id),
@@ -119,44 +109,39 @@ impl Page {
                 write_file(&self.data);
             }
             Message::Edit(id) => {
-                return Some(crate::Message::EditAttack(id));
+                return Some(super::Message::EditAttack(id));
             }
         }
         None
     }
     pub fn view(&self) -> Element<Message> {
-        let mut contents = column![
-            button("Reload from disk").on_press(Message::ReadFile),
-            button("Save").on_press(Message::WriteFile),
-        ]
-        .align_x(Alignment::Center)
-        .spacing(10);
-
         let new_entry_row = row![
             text_input("New entry name", &self.new_entry_name)
-            .on_input(Message::ChangeNewEntryName),
+                .on_input(Message::ChangeNewEntryName),
             button("Create new").on_press(Message::CreateNew),
         ];
-        let mut details_column = column![
+        let heading_row = row![
             text(format!("Last item id: {}", self.data.last_id)),
-            new_entry_row,
-        ]
-        .align_x(Alignment::Start)
-        .spacing(10);
+            horizontal_space(),
+            button("Refresh").on_press(Message::ReadFile),
+        ];
+        let mut details_column = column![heading_row, new_entry_row,]
+            .align_x(Alignment::Start)
+            .spacing(10);
         for item in self.data.list.iter().filter(is_active) {
             let item_row = row![
                 text(format!("{}", item.id))
-                .width(portion(1))
-                .align_x(Alignment::Center),
+                    .width(portion(1))
+                    .align_x(Alignment::Center),
                 make_rule(1, Alignment::Start),
                 text(&item.name).width(portion(5)),
                 make_rule(1, Alignment::End),
                 button(text("Edit").align_x(Alignment::Center))
-                .on_press(Message::Edit(item.id))
-                .width(portion(3)),
+                    .on_press(Message::Edit(item.id))
+                    .width(portion(3)),
                 button(text("Delete").align_x(Alignment::Center))
-                .on_press(Message::HideEntry(item.id))
-                .width(portion(3)),
+                    .on_press(Message::HideEntry(item.id))
+                    .width(portion(3)),
             ]
             .spacing(5)
             .padding([0, 5])
@@ -165,10 +150,7 @@ impl Page {
             let item_row = container(item_row).style(container::bordered_box);
             details_column = details_column.push(item_row);
         }
-        let details = container(details_column).width(400);
-        contents = contents.push(details);
-
-        contents.into()
+        container(details_column).width(400).into()
     }
 }
 
@@ -186,7 +168,7 @@ fn portion(value: u16) -> Length {
 
 fn make_rule(part: u16, alignment: Alignment) -> Container<'static, Message> {
     container(vertical_rule(5))
-    .align_x(alignment)
-    .width(portion(part))
-    .height(23)
+        .align_x(alignment)
+        .width(portion(part))
+        .height(23)
 }

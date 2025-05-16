@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use iced::widget::{column, container, pick_list, row, text};
+use iced::widget::{button, column, container, row, Button, Space};
 use iced::{window, Alignment, Element, Length, Renderer, Settings, Task, Theme};
 use iced_widget::graphics::{self, compositor};
 use iced_winit::Program;
@@ -31,9 +31,7 @@ fn main() {
 #[derive(Debug, Clone)]
 enum Message {
     SelectKind(EditorKind),
-    EditAttack(u32),
-    Attack(attack::item::Message),
-    AttackList(attack::list::Message),
+    Attack(attack::Message),
     Npc(npc::Message),
     Level(level::Message),
 }
@@ -41,15 +39,35 @@ enum Message {
 #[derive(Debug, Clone, PartialEq)]
 enum EditorKind {
     Attack,
-    AttackList,
     Npc,
     Level,
 }
 
 impl EditorKind {
-    const fn items() -> [EditorKind; 4] {
+    fn into_message(self) -> Message {
+        Message::SelectKind(self)
+    }
+    fn label(&self) -> &'static str {
         use EditorKind::*;
-        [Attack, AttackList, Npc, Level]
+        match self {
+            Attack => "Attack",
+            Npc => "Npc",
+            Level => "Level",
+        }
+    }
+    fn make_button(self, selected: &Option<EditorKind>) -> Button<'static, Message> {
+        let style = if let Some(selected) = selected {
+            if selected == &self {
+                button::primary
+            } else {
+                button::secondary
+            }
+        } else {
+            button::secondary
+        };
+        button(self.label())
+            .on_press(self.into_message())
+            .style(style)
     }
 }
 
@@ -61,8 +79,7 @@ impl Display for EditorKind {
 
 enum EditorState {
     NotSelected,
-    Attack(Box<attack::item::Page>),
-    AttackList(Box<attack::list::Page>),
+    Attack(Box<attack::Page>),
     Npc(Box<Option<NpcConstructor>>),
     Level(Box<Option<Level>>),
 }
@@ -87,26 +104,15 @@ impl Program for App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::SelectKind(kind) => match kind {
-                EditorKind::Attack => (), // do nothing here
-                EditorKind::AttackList => {
-                    self.state = EditorState::AttackList(Box::new(attack::list::Page::load()))
+                EditorKind::Attack => {
+                    self.state = EditorState::Attack(Box::new(attack::Page::load()))
                 }
                 EditorKind::Npc => self.state = EditorState::Npc(Box::new(None)),
                 EditorKind::Level => self.state = EditorState::Level(Box::new(None)),
             },
-            Message::EditAttack(id) => {
-                self.state = EditorState::Attack(Box::new(attack::item::Page::load_by_id(id)))
-            }
             Message::Attack(message) => {
                 if let EditorState::Attack(attack) = &mut self.state {
                     attack.update(message);
-                }
-            }
-            Message::AttackList(message) => {
-                if let EditorState::AttackList(page) = &mut self.state {
-                    if let Some(new_message) = page.update(message) {
-                        return self.update(new_message);
-                    }
                 }
             }
             Message::Npc(message) => {
@@ -123,14 +129,11 @@ impl Program for App {
         Task::none()
     }
     fn view(&self, _window: window::Id) -> Element<Message> {
+        let selected_kind = self.selected_kind();
         let editor_kind_picker = row![
-            text("Editor kind"),
-            pick_list(
-                EditorKind::items(),
-                self.selected_kind(),
-                Message::SelectKind
-            )
-            .placeholder("Editor kind")
+            EditorKind::Attack.make_button(&selected_kind),
+            EditorKind::Npc.make_button(&selected_kind),
+            EditorKind::Level.make_button(&selected_kind),
         ]
         .align_y(Alignment::Center)
         .spacing(10);
@@ -140,10 +143,6 @@ impl Program for App {
             EditorState::NotSelected => (),
             EditorState::Attack(page) => {
                 let element = page.view().map(Message::Attack);
-                contents = contents.push(element);
-            }
-            EditorState::AttackList(page) => {
-                let element = page.view().map(Message::AttackList);
                 contents = contents.push(element);
             }
             EditorState::Npc(npc) => {
@@ -158,13 +157,15 @@ impl Program for App {
 
         column![
             editor_kind_picker,
+            Space::with_height(20),
             container(contents)
                 .center_x(Length::Fill)
-                .center_y(Length::Fill)
                 .width(Length::Fill)
                 .height(Length::Fill)
         ]
         .align_x(Alignment::Center)
+        .padding(20)
+        .spacing(10)
         .into()
     }
     fn theme(&self, _window: window::Id) -> Theme {
@@ -177,7 +178,6 @@ impl App {
         match self.state {
             EditorState::NotSelected => None,
             EditorState::Attack(_) => Some(EditorKind::Attack),
-            EditorState::AttackList(_) => Some(EditorKind::AttackList),
             EditorState::Npc(_) => Some(EditorKind::Npc),
             EditorState::Level(_) => Some(EditorKind::Level),
         }
