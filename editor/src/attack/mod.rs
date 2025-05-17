@@ -1,7 +1,9 @@
 use iced::Element;
 
-pub mod item;
-pub mod list;
+use crate::EditorState;
+
+mod item;
+mod list;
 
 pub struct Page {
     list: list::Page,
@@ -9,8 +11,12 @@ pub struct Page {
     current_page: CurrentPage,
 }
 
+pub fn load_state() -> EditorState {
+    EditorState::Attack(Box::new(Page::load()))
+}
+
 impl Page {
-    pub fn load() -> Self {
+    fn load() -> Self {
         Page {
             list: list::Page::load(),
             item: None,
@@ -29,7 +35,7 @@ impl Page {
                     self.update(new_message);
                 }
             }
-            Message::EditAttack(id) => {
+            Message::EditItem(id) => {
                 self.item = Some(item::Page::load_by_id(id));
                 self.current_page = CurrentPage::Item;
             }
@@ -58,7 +64,7 @@ impl Page {
 pub enum Message {
     Item(item::Message),
     List(list::Message),
-    EditAttack(u32),
+    EditItem(u32),
     OpenList,
 }
 

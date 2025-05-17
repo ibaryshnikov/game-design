@@ -11,8 +11,6 @@ mod attack;
 mod level;
 mod npc;
 
-use level::Level;
-
 fn main() {
     let app = App {
         state: EditorState::NotSelected,
@@ -81,7 +79,7 @@ enum EditorState {
     NotSelected,
     Attack(Box<attack::Page>),
     Npc(Box<Option<NpcConstructor>>),
-    Level(Box<Option<Level>>),
+    Level(Box<level::Page>),
 }
 
 struct App {
@@ -104,11 +102,11 @@ impl Program for App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::SelectKind(kind) => match kind {
-                EditorKind::Attack => {
-                    self.state = EditorState::Attack(Box::new(attack::Page::load()))
+                EditorKind::Attack => self.state = attack::load_state(),
+                EditorKind::Npc => {
+                    self.state = EditorState::Npc(Box::new(None));
                 }
-                EditorKind::Npc => self.state = EditorState::Npc(Box::new(None)),
-                EditorKind::Level => self.state = EditorState::Level(Box::new(None)),
+                EditorKind::Level => self.state = level::load_state(),
             },
             Message::Attack(message) => {
                 if let EditorState::Attack(attack) = &mut self.state {
@@ -122,7 +120,7 @@ impl Program for App {
             }
             Message::Level(message) => {
                 if let EditorState::Level(level) = &mut self.state {
-                    level::update(level, message);
+                    level.update(message);
                 }
             }
         }
@@ -150,7 +148,7 @@ impl Program for App {
                 contents = contents.push(element);
             }
             EditorState::Level(level) => {
-                let element = level::view(level).map(Message::Level);
+                let element = level.view().map(Message::Level);
                 contents = contents.push(element);
             }
         }

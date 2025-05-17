@@ -4,17 +4,17 @@ use iced::widget::{
 use iced::{Alignment, Element, Length};
 use serde::{Deserialize, Serialize};
 
-use shared::attack::AttackConstructor;
+use super::item::Level;
 
 pub struct Page {
-    data: AttackList,
+    data: LevelList,
     new_entry_name: String,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub struct AttackList {
+pub struct LevelList {
     last_id: u32,
-    list: Vec<AttackInfo>,
+    list: Vec<LevelInfo>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -24,7 +24,7 @@ enum EntryStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct AttackInfo {
+struct LevelInfo {
     id: u32,
     name: String,
     status: EntryStatus,
@@ -40,43 +40,43 @@ pub enum Message {
     Edit(u32),
 }
 
-fn read_file() -> Option<AttackList> {
-    let contents = std::fs::read("data/attack_list.json").ok()?;
+fn read_file() -> Option<LevelList> {
+    let contents = std::fs::read("data/level_list.json").ok()?;
     serde_json::from_slice(&contents).ok()
 }
 
-fn write_file(attack_list: &AttackList) {
-    let contents = serde_json::to_vec(attack_list).expect("Should encode AttackList");
-    std::fs::write("data/attack_list.json", contents).expect("Should write AttackList to a file");
+fn write_file(level_list: &LevelList) {
+    let contents = serde_json::to_vec(level_list).expect("Should encode LevelList");
+    std::fs::write("data/level_list.json", contents).expect("Should write LevelList to a file");
 }
 
-fn find_entry_mut(list: &mut [AttackInfo], id: u32) -> Option<&mut AttackInfo> {
+fn find_entry_mut(list: &mut [LevelInfo], id: u32) -> Option<&mut LevelInfo> {
     list.iter_mut().find(|item| item.id == id)
 }
 
-fn show_entry(attack_list: &mut AttackList, id: u32) {
-    let Some(entry) = find_entry_mut(&mut attack_list.list, id) else {
+fn show_entry(level_list: &mut LevelList, id: u32) {
+    let Some(entry) = find_entry_mut(&mut level_list.list, id) else {
         return;
     };
     if let EntryStatus::Active = entry.status {
         return;
     };
     entry.status = EntryStatus::Active;
-    write_file(attack_list);
+    write_file(level_list);
 }
 
-fn hide_entry(attack_list: &mut AttackList, id: u32) {
-    let Some(entry) = find_entry_mut(&mut attack_list.list, id) else {
+fn hide_entry(level_list: &mut LevelList, id: u32) {
+    let Some(entry) = find_entry_mut(&mut level_list.list, id) else {
         return;
     };
     if let EntryStatus::Hidden = entry.status {
         return;
     };
     entry.status = EntryStatus::Hidden;
-    write_file(attack_list);
+    write_file(level_list);
 }
 
-fn load_data() -> AttackList {
+fn load_data() -> LevelList {
     read_file().unwrap_or_default()
 }
 
@@ -98,9 +98,9 @@ impl Page {
             Message::CreateNew => {
                 self.data.last_id += 1;
                 let name = std::mem::take(&mut self.new_entry_name);
-                let new_attack = AttackConstructor::new(name.clone());
-                super::item::save_by_id(&new_attack, self.data.last_id);
-                let new_entry = AttackInfo {
+                let new_level = Level::new(name.clone());
+                super::item::save_by_id(&new_level, self.data.last_id);
+                let new_entry = LevelInfo {
                     id: self.data.last_id,
                     name,
                     status: EntryStatus::Active,
@@ -154,7 +154,7 @@ impl Page {
     }
 }
 
-fn is_active(item: &&AttackInfo) -> bool {
+fn is_active(item: &&LevelInfo) -> bool {
     if let EntryStatus::Active = item.status {
         true
     } else {
