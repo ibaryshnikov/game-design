@@ -3,6 +3,20 @@ use iced::{Alignment, Element};
 
 use shared::npc::NpcConstructor;
 
+pub struct Page {
+    id: u32,
+    data: NpcConstructor,
+}
+
+impl Page {
+    pub fn load_by_id(id: u32) -> Self {
+        Page {
+            id,
+            data: load_by_id(id),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     ReadFile,
@@ -17,68 +31,69 @@ fn read_file() -> Option<NpcConstructor> {
     serde_json::from_slice(&contents).ok()
 }
 
-fn write_file(attack: &Option<NpcConstructor>) {
-    let Some(attack) = attack else { return };
-    let contents = serde_json::to_vec(attack).expect("Should encode NpcConstructor");
+fn write_file(npc: &Option<NpcConstructor>) {
+    let Some(npc) = npc else { return };
+    let contents = serde_json::to_vec(npc).expect("Should encode NpcConstructor");
     std::fs::write("data/npc.json", contents).expect("Should write NpcConstructor to a file");
 }
 
-pub fn update(npc: &mut Option<NpcConstructor>, message: Message) {
-    match message {
-        Message::ReadFile => {
-            let contents = read_file();
-            if contents.is_some() {
-                *npc = contents;
-            } else {
-                *npc = Some(NpcConstructor::default())
+fn load_by_id(id: u32) -> NpcConstructor {
+    let file_path = format!("data/npc_{}.json", id);
+    let contents = std::fs::read(file_path).expect("Should read NpcConstructor from a file");
+    serde_json::from_slice(&contents).expect("Should decond NpcConstructor")
+}
+
+pub fn save_by_id(npc: &NpcConstructor, id: u32) {
+    let file_path = format!("data/npc_{}.json", id);
+    let contents = serde_json::to_vec(npc).expect("Should encode NpcConstructor");
+    std::fs::write(file_path, contents).expect("Should write NpcConstructor to a file");
+}
+
+impl Page {
+    pub fn update(&mut self, message: Message) {
+        match message {
+            Message::ReadFile => {
+                self.data = load_by_id(self.id);
             }
-        }
-        Message::WriteFile => write_file(npc),
-        Message::ChangeCloseMeleeAttackDistance(value) => {
-            let parsed = value.parse::<f32>().ok();
-            let Some(parsed) = parsed else {
-                return;
-            };
-            if let Some(npc) = npc {
-                npc.close_melee_attack_distance = parsed;
+            Message::WriteFile => save_by_id(&self.data, self.id),
+            Message::ChangeCloseMeleeAttackDistance(value) => {
+                let parsed = value.parse::<f32>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.close_melee_attack_distance = parsed;
             }
-        }
-        Message::ChangeMeleeAttackDistance(value) => {
-            let parsed = value.parse::<f32>().ok();
-            let Some(parsed) = parsed else {
-                return;
-            };
-            if let Some(npc) = npc {
-                npc.melee_attack_distance = parsed;
+            Message::ChangeMeleeAttackDistance(value) => {
+                let parsed = value.parse::<f32>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.melee_attack_distance = parsed;
             }
-        }
-        Message::ChangeRangedAttackDistance(value) => {
-            let parsed = value.parse::<f32>().ok();
-            let Some(parsed) = parsed else {
-                return;
-            };
-            if let Some(npc) = npc {
-                npc.ranged_attack_distance = parsed;
+            Message::ChangeRangedAttackDistance(value) => {
+                let parsed = value.parse::<f32>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.ranged_attack_distance = parsed;
             }
         }
     }
-}
 
-pub fn view(npc: &Option<NpcConstructor>) -> Element<Message> {
-    let mut contents = column![
-        button("Read").on_press(Message::ReadFile),
-        button("Write").on_press(Message::WriteFile),
-    ]
-    .align_x(Alignment::Center)
-    .spacing(10);
+    pub fn view(&self) -> Element<Message> {
+        let mut contents = column![
+            button("Reload from disk").on_press(Message::ReadFile),
+            button("Save").on_press(Message::WriteFile),
+        ]
+        .align_x(Alignment::Center)
+        .spacing(10);
 
-    if let Some(npc) = npc {
         let npc_details_column = column![
             row![
                 text("Close melee attack distance"),
                 text_input(
                     "Close melee attack distance",
-                    &format!("{}", npc.close_melee_attack_distance)
+                    &format!("{}", self.data.close_melee_attack_distance)
                 )
                 .on_input(Message::ChangeCloseMeleeAttackDistance),
             ]
@@ -88,7 +103,7 @@ pub fn view(npc: &Option<NpcConstructor>) -> Element<Message> {
                 text("Melee attack distance"),
                 text_input(
                     "Melee attack distance",
-                    &format!("{}", npc.melee_attack_distance)
+                    &format!("{}", self.data.melee_attack_distance)
                 )
                 .on_input(Message::ChangeMeleeAttackDistance),
             ]
@@ -98,7 +113,7 @@ pub fn view(npc: &Option<NpcConstructor>) -> Element<Message> {
                 text("Ranged attack distance"),
                 text_input(
                     "Ranged attack distance",
-                    &format!("{}", npc.ranged_attack_distance)
+                    &format!("{}", self.data.ranged_attack_distance)
                 )
                 .on_input(Message::ChangeRangedAttackDistance),
             ]
@@ -109,7 +124,7 @@ pub fn view(npc: &Option<NpcConstructor>) -> Element<Message> {
         .spacing(10);
         let npc_details = container(npc_details_column).width(300);
         contents = contents.push(npc_details);
-    }
 
-    contents.into()
+        contents.into()
+    }
 }

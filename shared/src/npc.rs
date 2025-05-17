@@ -8,6 +8,7 @@ use crate::attack::{AttackConstructor, RecoverInfo};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct NpcConstructor {
+    pub name: String,
     pub close_melee_attack_distance: f32,
     pub close_melee_attacks: Vec<AttackConstructor>,
     pub melee_attack_distance: f32,
@@ -17,9 +18,19 @@ pub struct NpcConstructor {
     pub hp: i32,
 }
 
+impl NpcConstructor {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            ..Self::default()
+        }
+    }
+}
+
 impl Default for NpcConstructor {
     fn default() -> Self {
         NpcConstructor {
+            name: String::new(),
             close_melee_attack_distance: 0.0,
             close_melee_attacks: Vec::new(),
             melee_attack_distance: 0.0,
@@ -58,6 +69,7 @@ impl NpcInfo {
             ranged_attack_distance,
             ranged_attacks,
             hp,
+            ..
         } = constructor;
         NpcInfo {
             position,

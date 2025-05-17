@@ -5,8 +5,6 @@ use iced::{window, Alignment, Element, Length, Renderer, Settings, Task, Theme};
 use iced_widget::graphics::{self, compositor};
 use iced_winit::Program;
 
-use shared::npc::NpcConstructor;
-
 mod attack;
 mod level;
 mod npc;
@@ -78,7 +76,7 @@ impl Display for EditorKind {
 enum EditorState {
     NotSelected,
     Attack(Box<attack::Page>),
-    Npc(Box<Option<NpcConstructor>>),
+    Npc(Box<npc::Page>),
     Level(Box<level::Page>),
 }
 
@@ -103,9 +101,7 @@ impl Program for App {
         match message {
             Message::SelectKind(kind) => match kind {
                 EditorKind::Attack => self.state = attack::load_state(),
-                EditorKind::Npc => {
-                    self.state = EditorState::Npc(Box::new(None));
-                }
+                EditorKind::Npc => self.state = npc::load_state(),
                 EditorKind::Level => self.state = level::load_state(),
             },
             Message::Attack(message) => {
@@ -115,7 +111,7 @@ impl Program for App {
             }
             Message::Npc(message) => {
                 if let EditorState::Npc(npc) = &mut self.state {
-                    npc::update(npc, message);
+                    npc.update(message);
                 }
             }
             Message::Level(message) => {
@@ -144,7 +140,7 @@ impl Program for App {
                 contents = contents.push(element);
             }
             EditorState::Npc(npc) => {
-                let element = npc::view(npc).map(Message::Npc);
+                let element = npc.view().map(Message::Npc);
                 contents = contents.push(element);
             }
             EditorState::Level(level) => {
