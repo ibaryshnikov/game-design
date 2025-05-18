@@ -1,11 +1,14 @@
 use iced::widget::{button, column, container, pick_list, row, text};
 use iced::{Alignment, Element};
-use serde::{Deserialize, Serialize};
+
+use shared::level::Level;
+
+use super::get_item_file_path;
 
 pub struct Page {
     id: u32,
     data: Level,
-    selected: Option<i32>,
+    selected: Option<u32>,
 }
 
 impl Page {
@@ -22,24 +25,9 @@ impl Page {
 pub enum Message {
     ReadFile,
     WriteFile,
-    SelectNpc(i32),
-    AddNpc(i32),
+    SelectNpc(u32),
+    AddNpc(u32),
     RemoveNpc(usize),
-}
-
-#[derive(Default, Debug, Deserialize, Serialize)]
-pub struct Level {
-    name: String,
-    npc_list: Vec<i32>,
-}
-
-impl Level {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            npc_list: Vec::new(),
-        }
-    }
 }
 
 fn read_file() -> Option<Level> {
@@ -49,19 +37,19 @@ fn read_file() -> Option<Level> {
 
 fn write_file(level: &Option<Level>) {
     let Some(level) = level else { return };
-    let contents = serde_json::to_vec(level).expect("Should encode Level");
+    let contents = serde_json::to_vec_pretty(level).expect("Should encode Level");
     std::fs::write("data/level.json", contents).expect("Should write Level to a file");
 }
 
 fn load_by_id(id: u32) -> Level {
-    let file_path = format!("data/level_{}.json", id);
+    let file_path = get_item_file_path(id);
     let contents = std::fs::read(file_path).expect("Should read Level from a file");
-    serde_json::from_slice(&contents).expect("Should decond Level")
+    serde_json::from_slice(&contents).expect("Should decode Level")
 }
 
 pub fn save_by_id(level: &Level, id: u32) {
-    let file_path = format!("data/level_{}.json", id);
-    let contents = serde_json::to_vec(level).expect("Should encode Level");
+    let file_path = get_item_file_path(id);
+    let contents = serde_json::to_vec_pretty(level).expect("Should encode Level");
     std::fs::write(file_path, contents).expect("Should write Level to a file");
 }
 

@@ -1,0 +1,10 @@
+{
+  "name": "Second boss",
+  "close_melee_attack_distance": 50.0,
+  "close_melee_attacks": [],
+  "melee_attack_distance": 100.0,
+  "melee_attacks": [],
+  "ranged_attack_distance": 300.0,
+  "ranged_attacks": [],
+  "hp": 0
+}

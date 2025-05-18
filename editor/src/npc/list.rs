@@ -4,7 +4,14 @@ use iced::widget::{
 use iced::{Alignment, Element, Length};
 use serde::{Deserialize, Serialize};
 
+use shared::list::EntryStatus;
 use shared::npc::NpcConstructor;
+
+use super::FOLDER_PATH;
+use crate::utils::combine;
+
+const FILE_NAME: &str = "list.json";
+const FILE_PATH: &str = combine!(FOLDER_PATH, FILE_NAME);
 
 pub struct Page {
     data: NpclList,
@@ -15,12 +22,6 @@ pub struct Page {
 pub struct NpclList {
     last_id: u32,
     list: Vec<LevelInfo>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-enum EntryStatus {
-    Active,
-    Hidden,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -41,13 +42,13 @@ pub enum Message {
 }
 
 fn read_file() -> Option<NpclList> {
-    let contents = std::fs::read("data/npc_list.json").ok()?;
+    let contents = std::fs::read(FILE_PATH).ok()?;
     serde_json::from_slice(&contents).ok()
 }
 
 fn write_file(npc_list: &NpclList) {
-    let contents = serde_json::to_vec(npc_list).expect("Should encode NpclList");
-    std::fs::write("data/npc_list.json", contents).expect("Should write NpclList to a file");
+    let contents = serde_json::to_vec_pretty(npc_list).expect("Should encode NpclList");
+    std::fs::write(FILE_PATH, contents).expect("Should write NpclList to a file");
 }
 
 fn find_entry_mut(list: &mut [LevelInfo], id: u32) -> Option<&mut LevelInfo> {

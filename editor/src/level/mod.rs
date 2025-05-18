@@ -1,9 +1,18 @@
 use iced::Element;
 
-use crate::EditorState;
+use crate::utils::combine;
+use crate::{EditorState, DATA_PATH};
+
+const FILE_PREFIX: &str = "level";
+const FOLDER_NAME: &str = "level/";
+const FOLDER_PATH: &str = combine!(DATA_PATH, FOLDER_NAME);
 
 mod item;
 mod list;
+
+fn get_item_file_path(id: u32) -> String {
+    format!("{FOLDER_PATH}/{FILE_PREFIX}_{id}.json")
+}
 
 pub struct Page {
     list: list::Page,

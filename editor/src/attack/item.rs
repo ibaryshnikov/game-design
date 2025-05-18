@@ -3,6 +3,8 @@ use iced::{Alignment, Element};
 
 use shared::attack::{AttackConstructor, AttackKind, AttackOrder};
 
+use super::get_item_file_path;
+
 pub struct Page {
     id: u32,
     data: AttackConstructor,
@@ -33,19 +35,19 @@ fn read_file() -> Option<AttackConstructor> {
 
 fn write_file(attack: &Option<AttackConstructor>) {
     let Some(attack) = attack else { return };
-    let contents = serde_json::to_vec(attack).expect("Should encode AttackConstructor");
+    let contents = serde_json::to_vec_pretty(attack).expect("Should encode AttackConstructor");
     std::fs::write("data/attack.json", contents).expect("Should write AttackConstructor to a file");
 }
 
 fn load_by_id(id: u32) -> AttackConstructor {
-    let file_path = format!("data/attack_{}.json", id);
+    let file_path = get_item_file_path(id);
     let contents = std::fs::read(file_path).expect("Should read AttackConstructor from a file");
-    serde_json::from_slice(&contents).expect("Should decond AttackConstructor")
+    serde_json::from_slice(&contents).expect("Should decode AttackConstructor")
 }
 
 pub fn save_by_id(attack: &AttackConstructor, id: u32) {
-    let file_path = format!("data/attack_{}.json", id);
-    let contents = serde_json::to_vec(attack).expect("Should encode AttackConstructor");
+    let file_path = get_item_file_path(id);
+    let contents = serde_json::to_vec_pretty(attack).expect("Should encode AttackConstructor");
     std::fs::write(file_path, contents).expect("Should write AttackConstructor to a file");
 }
 

@@ -1,0 +1,10 @@
+{
+  "name": "First boss",
+  "close_melee_attack_distance": 150.0,
+  "close_melee_attacks": [],
+  "melee_attack_distance": 300.0,
+  "melee_attacks": [],
+  "ranged_attack_distance": 500.0,
+  "ranged_attacks": [],
+  "hp": 0
+}

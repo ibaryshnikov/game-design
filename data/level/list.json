@@ -1,0 +1,15 @@
+{
+  "last_id": 2,
+  "list": [
+    {
+      "id": 1,
+      "name": "First level",
+      "status": "Active"
+    },
+    {
+      "id": 2,
+      "name": "Second level",
+      "status": "Active"
+    }
+  ]
+}

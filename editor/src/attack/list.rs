@@ -5,6 +5,13 @@ use iced::{Alignment, Element, Length};
 use serde::{Deserialize, Serialize};
 
 use shared::attack::AttackConstructor;
+use shared::list::EntryStatus;
+
+use super::FOLDER_PATH;
+use crate::utils::combine;
+
+const FILE_NAME: &str = "list.json";
+const FILE_PATH: &str = combine!(FOLDER_PATH, FILE_NAME);
 
 pub struct Page {
     data: AttackList,
@@ -15,12 +22,6 @@ pub struct Page {
 pub struct AttackList {
     last_id: u32,
     list: Vec<AttackInfo>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-enum EntryStatus {
-    Active,
-    Hidden,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -41,13 +42,13 @@ pub enum Message {
 }
 
 fn read_file() -> Option<AttackList> {
-    let contents = std::fs::read("data/attack_list.json").ok()?;
+    let contents = std::fs::read(FILE_PATH).ok()?;
     serde_json::from_slice(&contents).ok()
 }
 
 fn write_file(attack_list: &AttackList) {
-    let contents = serde_json::to_vec(attack_list).expect("Should encode AttackList");
-    std::fs::write("data/attack_list.json", contents).expect("Should write AttackList to a file");
+    let contents = serde_json::to_vec_pretty(attack_list).expect("Should encode AttackList");
+    std::fs::write(FILE_PATH, contents).expect("Should write AttackList to a file");
 }
 
 fn find_entry_mut(list: &mut [AttackInfo], id: u32) -> Option<&mut AttackInfo> {

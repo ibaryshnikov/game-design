@@ -21,6 +21,8 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy}
 use winit::keyboard::{KeyCode, ModifiersState, PhysicalKey};
 use winit::window::{Window, WindowId};
 
+use shared::level::{Level, LevelInfo, LevelList};
+use shared::npc::NpcConstructor;
 use shared::types::{KeyActionKind, Move};
 
 mod attack;
@@ -42,7 +44,9 @@ enum Message {
     WsMessage(String),
     ServerAction(ServerAction),
     Tick,
-    Start,
+    SwitchToLevelSelect,
+    Start(u32),
+    SelectLevel(u32),
     Retry,
     Move(KeyActionKind, Move),
     HeroDash,
@@ -52,6 +56,7 @@ enum Message {
 
 enum FightState {
     Pending,
+    LevelSelect,
     Action,
     Win,
     Loss,
@@ -66,11 +71,33 @@ struct UiApp {
     npc_list: HashMap<u128, Boss>,
     state: FightState,
     ws_sender: Option<mpsc::Sender<ws::LocalMessage>>,
+    level_list: LevelList,
+    selected_level: Option<LevelInfo>,
+}
+
+fn load_npc_by_id(id: u32) -> NpcConstructor {
+    let file_path = format!("../data/npc/npc_{id}.json");
+    let contents = std::fs::read(file_path).expect("Should read NpcConstructor from a file");
+    serde_json::from_slice(&contents).expect("Should decode NpcConstructor")
+}
+
+fn load_level_list() -> LevelList {
+    let file_path = "../data/level/list.json";
+    let contents = std::fs::read(file_path).expect("Should read LevelList from a file");
+    serde_json::from_slice(&contents).expect("Should decode LevelList")
+}
+
+fn load_level_by_id(id: u32) -> Level {
+    let file_path = format!("../data/level/level_{id}.json");
+    let contents = std::fs::read(file_path).expect("Should read Level from a file");
+    serde_json::from_slice(&contents).expect("Should decode Level")
 }
 
 impl UiApp {
     fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
-        let boss = Boss::new(Point2::new(512.0, 384.0));
+        let level_list = load_level_list();
+        let boss_constructor = load_npc_by_id(1);
+        let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
         let hero = Hero::new(Point2::new(250.0, 200.0));
         UiApp {
             proxy,
@@ -81,7 +108,15 @@ impl UiApp {
             npc_list: HashMap::new(),
             state: FightState::Pending,
             ws_sender: None,
+            level_list,
+            selected_level: None,
         }
+    }
+    fn load_level(&mut self, id: u32) {
+        let level = load_level_by_id(id);
+        let npc_id = level.npc_list[0];
+        let constructor = load_npc_by_id(npc_id);
+        self.boss = Boss::from_constructor(Point2::new(512.0, 384.0), constructor);
     }
 }
 
@@ -137,7 +172,19 @@ impl UiApp {
                     self.boss.stop();
                 }
             }
-            Message::Start => {
+            Message::SwitchToLevelSelect => {
+                self.state = FightState::LevelSelect;
+            }
+            Message::SelectLevel(id) => {
+                self.selected_level = self
+                    .level_list
+                    .list
+                    .iter()
+                    .find(|item| item.id == id)
+                    .cloned();
+            }
+            Message::Start(id) => {
+                self.load_level(id);
                 self.state = FightState::Action;
             }
             Message::Retry => {
@@ -152,6 +199,7 @@ impl UiApp {
     fn view(&self) -> Element<Message, Theme, Renderer> {
         let el = match self.state {
             FightState::Pending => self.draw_pending().into(),
+            FightState::LevelSelect => self.draw_level_selection().into(),
             FightState::Action => self.draw_action(),
             FightState::Win => self.draw_win().into(),
             FightState::Loss => self.draw_loss().into(),
@@ -222,11 +270,29 @@ impl UiApp {
     fn draw_pending(&self) -> Row<Message> {
         let column = column![
             text("Welcome to the game!").size(30),
-            button("Start").on_press(Message::Start),
+            button("Start").on_press(Message::SwitchToLevelSelect),
         ]
         .align_x(Alignment::Center)
         .width(Length::Fill);
         row![column].align_y(Alignment::Center).height(Length::Fill)
+    }
+    fn draw_level_selection(&self) -> Row<Message> {
+        let mut level_list = column![].align_x(Alignment::Center).height(Length::Fill);
+        for item in self.level_list.list.iter() {
+            let level = button(text(&item.name)).on_press(Message::SelectLevel(item.id));
+            level_list = level_list.push(level);
+        }
+        let mut level_preview = column![].align_x(Alignment::Center).height(Length::Fill);
+        if let Some(selected_level) = &self.selected_level {
+            let preview = column![
+                text(format!("Selected level: {}", selected_level.name)),
+                button("Play").on_press(Message::Start(selected_level.id)),
+            ];
+            level_preview = level_preview.push(preview);
+        }
+        row![level_list, level_preview]
+            .align_y(Alignment::Center)
+            .height(Length::Fill)
     }
     fn draw_win(&self) -> Row<Message> {
         let column = column![

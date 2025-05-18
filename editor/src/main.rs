@@ -8,6 +8,9 @@ use iced_winit::Program;
 mod attack;
 mod level;
 mod npc;
+mod utils;
+
+const DATA_PATH: &str = "../data/";
 
 fn main() {
     let app = App {

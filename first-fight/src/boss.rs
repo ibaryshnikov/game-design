@@ -7,6 +7,7 @@ use nalgebra::Point2;
 use shared::attack::{AttackInfo, AttackKind, RecoverInfo};
 use shared::character::Character;
 use shared::check_hit;
+use shared::npc::NpcConstructor;
 use shared::position::{direction_from, distance_between};
 
 use crate::attack::AttackView;
@@ -41,6 +42,25 @@ impl Boss {
             attack_index: 0,
             melee_attack_distance: 300.0,
             ranged_attack_distance: 500.0,
+            attacking: None,
+            recovering: None,
+            hp: 300,
+            max_hp: 300,
+        }
+    }
+    pub fn from_constructor(position: Point2<f32>, constructor: NpcConstructor) -> Self {
+        let NpcConstructor {
+            close_melee_attack_distance,
+            melee_attack_distance,
+            ranged_attack_distance,
+            ..
+        } = constructor;
+        Boss {
+            position,
+            close_melee_attack_distance,
+            attack_index: 0,
+            melee_attack_distance,
+            ranged_attack_distance,
             attacking: None,
             recovering: None,
             hp: 300,

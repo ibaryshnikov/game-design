@@ -2,32 +2,19 @@ use iced::widget::{
     button, column, container, horizontal_space, row, text, text_input, vertical_rule, Container,
 };
 use iced::{Alignment, Element, Length};
-use serde::{Deserialize, Serialize};
 
-use super::item::Level;
+use shared::level::{Level, LevelInfo, LevelList};
+use shared::list::EntryStatus;
+
+use super::FOLDER_PATH;
+use crate::utils::combine;
+
+const FILE_NAME: &str = "list.json";
+const FILE_PATH: &str = combine!(FOLDER_PATH, FILE_NAME);
 
 pub struct Page {
     data: LevelList,
     new_entry_name: String,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct LevelList {
-    last_id: u32,
-    list: Vec<LevelInfo>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-enum EntryStatus {
-    Active,
-    Hidden,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct LevelInfo {
-    id: u32,
-    name: String,
-    status: EntryStatus,
 }
 
 #[derive(Debug, Clone)]
@@ -41,13 +28,13 @@ pub enum Message {
 }
 
 fn read_file() -> Option<LevelList> {
-    let contents = std::fs::read("data/level_list.json").ok()?;
+    let contents = std::fs::read(FILE_PATH).ok()?;
     serde_json::from_slice(&contents).ok()
 }
 
 fn write_file(level_list: &LevelList) {
-    let contents = serde_json::to_vec(level_list).expect("Should encode LevelList");
-    std::fs::write("data/level_list.json", contents).expect("Should write LevelList to a file");
+    let contents = serde_json::to_vec_pretty(level_list).expect("Should encode LevelList");
+    std::fs::write(FILE_PATH, contents).expect("Should write LevelList to a file");
 }
 
 fn find_entry_mut(list: &mut [LevelInfo], id: u32) -> Option<&mut LevelInfo> {

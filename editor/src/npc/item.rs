@@ -3,6 +3,8 @@ use iced::{Alignment, Element};
 
 use shared::npc::NpcConstructor;
 
+use super::get_item_file_path;
+
 pub struct Page {
     id: u32,
     data: NpcConstructor,
@@ -33,19 +35,19 @@ fn read_file() -> Option<NpcConstructor> {
 
 fn write_file(npc: &Option<NpcConstructor>) {
     let Some(npc) = npc else { return };
-    let contents = serde_json::to_vec(npc).expect("Should encode NpcConstructor");
+    let contents = serde_json::to_vec_pretty(npc).expect("Should encode NpcConstructor");
     std::fs::write("data/npc.json", contents).expect("Should write NpcConstructor to a file");
 }
 
 fn load_by_id(id: u32) -> NpcConstructor {
-    let file_path = format!("data/npc_{}.json", id);
+    let file_path = get_item_file_path(id);
     let contents = std::fs::read(file_path).expect("Should read NpcConstructor from a file");
-    serde_json::from_slice(&contents).expect("Should decond NpcConstructor")
+    serde_json::from_slice(&contents).expect("Should decode NpcConstructor")
 }
 
 pub fn save_by_id(npc: &NpcConstructor, id: u32) {
-    let file_path = format!("data/npc_{}.json", id);
-    let contents = serde_json::to_vec(npc).expect("Should encode NpcConstructor");
+    let file_path = get_item_file_path(id);
+    let contents = serde_json::to_vec_pretty(npc).expect("Should encode NpcConstructor");
     std::fs::write(file_path, contents).expect("Should write NpcConstructor to a file");
 }
 
