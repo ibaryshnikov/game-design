@@ -11,7 +11,7 @@ mod item;
 pub mod list;
 
 fn get_item_file_path(id: u32) -> String {
-    format!("{FOLDER_PATH}/{FILE_PREFIX}_{id}.json")
+    format!("{FOLDER_PATH}{FILE_PREFIX}_{id}.json")
 }
 
 pub struct Page {

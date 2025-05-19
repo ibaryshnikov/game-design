@@ -6,6 +6,7 @@ use iced_widget::graphics::{self, compositor};
 use iced_winit::Program;
 
 mod attack;
+mod character;
 mod level;
 mod npc;
 mod utils;
@@ -33,6 +34,7 @@ enum Message {
     Attack(attack::Message),
     Npc(npc::Message),
     Level(level::Message),
+    Character(character::Message),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,6 +42,7 @@ enum EditorKind {
     Attack,
     Npc,
     Level,
+    Character,
 }
 
 impl EditorKind {
@@ -52,6 +55,7 @@ impl EditorKind {
             Attack => "Attack",
             Npc => "Npc",
             Level => "Level",
+            Character => "Character",
         }
     }
     fn make_button(self, selected: &Option<EditorKind>) -> Button<'static, Message> {
@@ -81,6 +85,7 @@ enum EditorState {
     Attack(Box<attack::Page>),
     Npc(Box<npc::Page>),
     Level(Box<level::Page>),
+    Character(Box<character::Page>),
 }
 
 struct App {
@@ -106,6 +111,7 @@ impl Program for App {
                 EditorKind::Attack => self.state = attack::load_state(),
                 EditorKind::Npc => self.state = npc::load_state(),
                 EditorKind::Level => self.state = level::load_state(),
+                EditorKind::Character => self.state = character::load_state(),
             },
             Message::Attack(message) => {
                 if let EditorState::Attack(attack) = &mut self.state {
@@ -113,13 +119,18 @@ impl Program for App {
                 }
             }
             Message::Npc(message) => {
-                if let EditorState::Npc(npc) = &mut self.state {
-                    npc.update(message);
+                if let EditorState::Npc(page) = &mut self.state {
+                    page.update(message);
                 }
             }
             Message::Level(message) => {
-                if let EditorState::Level(level) = &mut self.state {
-                    level.update(message);
+                if let EditorState::Level(page) = &mut self.state {
+                    page.update(message);
+                }
+            }
+            Message::Character(message) => {
+                if let EditorState::Character(page) = &mut self.state {
+                    page.update(message);
                 }
             }
         }
@@ -131,6 +142,7 @@ impl Program for App {
             EditorKind::Attack.make_button(&selected_kind),
             EditorKind::Npc.make_button(&selected_kind),
             EditorKind::Level.make_button(&selected_kind),
+            EditorKind::Character.make_button(&selected_kind),
         ]
         .align_y(Alignment::Center)
         .spacing(10);
@@ -142,12 +154,16 @@ impl Program for App {
                 let element = page.view().map(Message::Attack);
                 contents = contents.push(element);
             }
-            EditorState::Npc(npc) => {
-                let element = npc.view().map(Message::Npc);
+            EditorState::Npc(page) => {
+                let element = page.view().map(Message::Npc);
                 contents = contents.push(element);
             }
-            EditorState::Level(level) => {
-                let element = level.view().map(Message::Level);
+            EditorState::Level(page) => {
+                let element = page.view().map(Message::Level);
+                contents = contents.push(element);
+            }
+            EditorState::Character(page) => {
+                let element = page.view().map(Message::Character);
                 contents = contents.push(element);
             }
         }
@@ -172,11 +188,14 @@ impl Program for App {
 
 impl App {
     fn selected_kind(&self) -> Option<EditorKind> {
+        use EditorKind::*;
         match self.state {
-            EditorState::NotSelected => None,
-            EditorState::Attack(_) => Some(EditorKind::Attack),
-            EditorState::Npc(_) => Some(EditorKind::Npc),
-            EditorState::Level(_) => Some(EditorKind::Level),
+            EditorState::NotSelected => return None,
+            EditorState::Attack(_) => Attack,
+            EditorState::Npc(_) => Npc,
+            EditorState::Level(_) => Level,
+            EditorState::Character(_) => Character,
         }
+        .into()
     }
 }

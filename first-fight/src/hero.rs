@@ -7,7 +7,7 @@ use nalgebra::{Point2, Vector2};
 use shared::attack::{
     AttackInfo, AttackKind, AttackOrder, AttackState, RecoverInfo, SelectionInfo,
 };
-use shared::character::Character;
+use shared::character::{Character, CharacterSettings};
 use shared::check_hit;
 use shared::hero::{DashCooldown, DashInfo};
 use shared::types::KeyActionKind;
@@ -38,6 +38,7 @@ pub struct Hero {
     pub recovering: Option<RecoverInfo>,
     dashing: Option<DashInfo>,
     dash_cooldown: Option<DashCooldown>,
+    character_settings: CharacterSettings,
 }
 
 impl Character for Hero {
@@ -47,6 +48,12 @@ impl Character for Hero {
     fn clear_recovering_state(&mut self) {
         self.recovering = None;
     }
+}
+
+fn load_character_settings_by_id(id: u32) -> CharacterSettings {
+    let file_path = format!("../data/character/character_{}.json", id);
+    let contents = std::fs::read(file_path).expect("Should read CharacterSettings from a file");
+    serde_json::from_slice(&contents).expect("Should decode CharacterSettings")
 }
 
 impl Hero {
@@ -71,6 +78,7 @@ impl Hero {
             recovering: None,
             dashing: None,
             dash_cooldown: None,
+            character_settings: load_character_settings_by_id(1),
         }
     }
     pub fn reset(&mut self) {
@@ -231,7 +239,7 @@ impl Hero {
         let dash_info = DashInfo {
             direction,
             started: Instant::now(),
-            time_to_complete: 100,
+            time_to_complete: self.character_settings.dash_duration,
         };
         self.dashing = Some(dash_info);
     }
@@ -321,7 +329,7 @@ impl Hero {
 
         if let Some(dash_info) = &self.dashing {
             if dash_info.percent_completed() > 1.0 {
-                self.position += dash_info.direction * 150.0;
+                self.position += dash_info.direction * self.character_settings.dash_distance as f32;
                 self.dashing = None;
                 let cooldown = DashCooldown {
                     started: Instant::now(),

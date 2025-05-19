@@ -114,8 +114,8 @@ impl UiApp {
     }
     fn load_level(&mut self, id: u32) {
         let level = load_level_by_id(id);
-        let npc_id = level.npc_list[0];
-        let constructor = load_npc_by_id(npc_id);
+        let npc = &level.npc_list[0];
+        let constructor = load_npc_by_id(npc.id);
         self.boss = Boss::from_constructor(Point2::new(512.0, 384.0), constructor);
     }
 }

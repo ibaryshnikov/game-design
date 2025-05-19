@@ -1,4 +1,12 @@
+use serde::{Deserialize, Serialize};
+
 use crate::attack::RecoverInfo;
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct CharacterSettings {
+    pub dash_duration: u128,
+    pub dash_distance: u128,
+}
 
 pub trait Character {
     fn get_recovering_state(&mut self) -> &mut Option<RecoverInfo>;
