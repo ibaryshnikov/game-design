@@ -1,22 +1,26 @@
 use iced::widget::{button, column, container, pick_list, row, text};
 use iced::{Alignment, Element};
 
-use shared::level::Level;
+use shared::level::{Level, LevelNpcInfo};
 
 use super::get_item_file_path;
+use crate::npc::list::{load_available_npc_list, NpcInfo};
 
 pub struct Page {
     id: u32,
     data: Level,
-    selected: Option<u32>,
+    selected: Option<LevelNpcInfo>,
+    available_npc_list: Vec<LevelNpcInfo>,
 }
 
 impl Page {
     pub fn load_by_id(id: u32) -> Self {
+        let available_npc_list = make_picker_items(load_available_npc_list());
         Page {
             id,
             data: load_by_id(id),
             selected: None,
+            available_npc_list,
         }
     }
 }
@@ -25,8 +29,8 @@ impl Page {
 pub enum Message {
     ReadFile,
     WriteFile,
-    SelectNpc(u32),
-    AddNpc(u32),
+    SelectNpc(LevelNpcInfo),
+    AddNpc(LevelNpcInfo),
     RemoveNpc(usize),
 }
 
@@ -53,6 +57,14 @@ pub fn save_by_id(level: &Level, id: u32) {
     std::fs::write(file_path, contents).expect("Should write Level to a file");
 }
 
+fn make_picker_items(npc_list: Vec<NpcInfo>) -> Vec<LevelNpcInfo> {
+    npc_list
+        .into_iter()
+        .filter(|item| item.status.is_active())
+        .map(|NpcInfo { id, name, .. }| LevelNpcInfo { id, name })
+        .collect()
+}
+
 impl Page {
     pub fn update(&mut self, message: Message) {
         match message {
@@ -60,11 +72,11 @@ impl Page {
                 self.data = load_by_id(self.id);
             }
             Message::WriteFile => save_by_id(&self.data, self.id),
-            Message::SelectNpc(id) => {
-                self.selected = Some(id);
+            Message::SelectNpc(npc) => {
+                self.selected = Some(npc);
             }
-            Message::AddNpc(id) => {
-                self.data.npc_list.push(id);
+            Message::AddNpc(npc) => {
+                self.data.npc_list.push(npc);
             }
             Message::RemoveNpc(index) => {
                 if index >= self.data.npc_list.len() {
@@ -92,9 +104,13 @@ impl Page {
             .spacing(10);
             npc_list = npc_list.push(npc_row);
         }
-        let message_add = self.selected.map(Message::AddNpc);
+        let message_add = self.selected.clone().map(Message::AddNpc);
         let add_npc_row = row![
-            pick_list([1, 2, 3], self.selected, Message::SelectNpc),
+            pick_list(
+                &self.available_npc_list[..],
+                self.selected.clone(),
+                Message::SelectNpc
+            ),
             button("add").on_press_maybe(message_add),
         ]
         .spacing(10);

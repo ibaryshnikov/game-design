@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use serde::{Deserialize, Serialize};
 
 use crate::list::EntryStatus;
@@ -15,10 +17,22 @@ pub struct LevelInfo {
     pub status: EntryStatus,
 }
 
+#[derive(Default, Debug, Deserialize, Serialize, PartialEq, Clone)]
+pub struct LevelNpcInfo {
+    pub id: u32,
+    pub name: String,
+}
+
+impl Display for LevelNpcInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.id, self.name)
+    }
+}
+
 #[derive(Default, Debug, Deserialize, Serialize)]
 pub struct Level {
     pub name: String,
-    pub npc_list: Vec<u32>,
+    pub npc_list: Vec<LevelNpcInfo>,
 }
 
 impl Level {

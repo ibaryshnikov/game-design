@@ -21,14 +21,14 @@ pub struct Page {
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct NpclList {
     last_id: u32,
-    list: Vec<LevelInfo>,
+    list: Vec<NpcInfo>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct LevelInfo {
-    id: u32,
-    name: String,
-    status: EntryStatus,
+pub struct NpcInfo {
+    pub id: u32,
+    pub name: String,
+    pub status: EntryStatus,
 }
 
 #[derive(Debug, Clone)]
@@ -51,8 +51,12 @@ fn write_file(npc_list: &NpclList) {
     std::fs::write(FILE_PATH, contents).expect("Should write NpclList to a file");
 }
 
-fn find_entry_mut(list: &mut [LevelInfo], id: u32) -> Option<&mut LevelInfo> {
+fn find_entry_mut(list: &mut [NpcInfo], id: u32) -> Option<&mut NpcInfo> {
     list.iter_mut().find(|item| item.id == id)
+}
+
+pub fn load_available_npc_list() -> Vec<NpcInfo> {
+    read_file().map(|data| data.list).unwrap_or_default()
 }
 
 fn show_entry(level_list: &mut NpclList, id: u32) {
@@ -101,7 +105,7 @@ impl Page {
                 let name = std::mem::take(&mut self.new_entry_name);
                 let new_level = NpcConstructor::new(name.clone());
                 super::item::save_by_id(&new_level, self.data.last_id);
-                let new_entry = LevelInfo {
+                let new_entry = NpcInfo {
                     id: self.data.last_id,
                     name,
                     status: EntryStatus::Active,
@@ -129,7 +133,7 @@ impl Page {
         let mut details_column = column![heading_row, new_entry_row,]
             .align_x(Alignment::Start)
             .spacing(10);
-        for item in self.data.list.iter().filter(is_active) {
+        for item in self.data.list.iter().filter(|item| item.status.is_active()) {
             let item_row = row![
                 text(format!("{}", item.id))
                     .width(portion(1))
@@ -152,14 +156,6 @@ impl Page {
             details_column = details_column.push(item_row);
         }
         container(details_column).width(400).into()
-    }
-}
-
-fn is_active(item: &&LevelInfo) -> bool {
-    if let EntryStatus::Active = item.status {
-        true
-    } else {
-        false
     }
 }
 

@@ -1,6 +1,9 @@
 {
   "name": "First level",
   "npc_list": [
-    1
+    {
+      "id": 1,
+      "name": "First boss"
+    }
   ]
 }

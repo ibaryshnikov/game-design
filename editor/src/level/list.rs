@@ -115,7 +115,7 @@ impl Page {
         let mut details_column = column![heading_row, new_entry_row,]
             .align_x(Alignment::Start)
             .spacing(10);
-        for item in self.data.list.iter().filter(is_active) {
+        for item in self.data.list.iter().filter(|item| item.status.is_active()) {
             let item_row = row![
                 text(format!("{}", item.id))
                     .width(portion(1))
@@ -138,14 +138,6 @@ impl Page {
             details_column = details_column.push(item_row);
         }
         container(details_column).width(400).into()
-    }
-}
-
-fn is_active(item: &&LevelInfo) -> bool {
-    if let EntryStatus::Active = item.status {
-        true
-    } else {
-        false
     }
 }
 
