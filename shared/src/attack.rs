@@ -142,6 +142,7 @@ pub struct AttackInfo {
     pub order: AttackOrder,
     pub distance: f32,
     pub state: AttackState,
+    pub damage_done: bool,
 }
 
 impl AttackInfo {
@@ -174,6 +175,7 @@ impl AttackInfo {
             order,
             distance,
             state,
+            damage_done: false,
         }
     }
     fn new(
@@ -196,6 +198,7 @@ impl AttackInfo {
             order,
             distance,
             state: AttackState::Selected,
+            damage_done: false,
         }
     }
     pub fn narrow(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
@@ -212,6 +215,7 @@ impl AttackInfo {
             order: AttackOrder::CloseToFar,
             distance,
             state: AttackState::Selected,
+            damage_done: false,
         }
     }
     pub fn wide(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
@@ -228,6 +232,7 @@ impl AttackInfo {
             order: AttackOrder::LeftToRight,
             distance,
             state: AttackState::Selected,
+            damage_done: false,
         }
     }
     pub fn wide_right(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
@@ -244,6 +249,7 @@ impl AttackInfo {
             order: AttackOrder::RightToLeft,
             distance,
             state: AttackState::Selected,
+            damage_done: false,
         }
     }
     pub fn left_then_right(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
@@ -260,6 +266,7 @@ impl AttackInfo {
             order: AttackOrder::LeftThenRight,
             distance,
             state: AttackState::Selected,
+            damage_done: false,
         }
     }
     pub fn right_then_left(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
@@ -276,6 +283,7 @@ impl AttackInfo {
             order: AttackOrder::RightThenLeft,
             distance,
             state: AttackState::Selected,
+            damage_done: false,
         }
     }
     pub fn split(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
@@ -292,6 +300,7 @@ impl AttackInfo {
             order: AttackOrder::CenterToSides,
             distance,
             state: AttackState::Selected,
+            damage_done: false,
         }
     }
     pub fn closing(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
@@ -308,16 +317,46 @@ impl AttackInfo {
             order: AttackOrder::SidesToCenter,
             distance,
             state: AttackState::Selected,
+            damage_done: false,
         }
     }
     pub fn fireball(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
-        AttackInfo::new(
+        let position = Point2::new(
+            position.x + direction.x * 70.0,
+            position.y + direction.y * 70.0,
+        );
+        AttackInfo {
             position,
             direction,
+            started_at: Instant::now(),
+            time_passed: 0,
+            delay: 100,
+            time_to_complete: 500,
+            aftercast: 300,
+            percent_completed: 0.0,
+            kind: AttackKind::Circle,
+            order: AttackOrder::ProjectileFromCaster,
             distance,
-            AttackKind::Circle,
-            AttackOrder::ExpandingCircle,
-        )
+            state: AttackState::Selected,
+            damage_done: false,
+        }
+    }
+    pub fn fireblast(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
+        AttackInfo {
+            position,
+            direction,
+            started_at: Instant::now(),
+            time_passed: 0,
+            delay: 400,
+            time_to_complete: 600,
+            aftercast: 300,
+            percent_completed: 0.0,
+            kind: AttackKind::Circle,
+            order: AttackOrder::ExpandingCircle,
+            distance,
+            state: AttackState::Selected,
+            damage_done: false,
+        }
     }
     pub fn magic_missiles(position: Point2<f32>, direction: Vector2<f32>, distance: f32) -> Self {
         AttackInfo::new(
@@ -347,17 +386,22 @@ impl AttackInfo {
             }
             AttackState::Attacking => {
                 let time_passed = self.started_at.elapsed().as_millis();
-                self.time_passed = time_passed;
+                // self.time_passed = time_passed;
                 let mut percent_completed = time_passed as f32 / self.time_to_complete as f32;
                 if percent_completed > 1.0 {
                     percent_completed = 1.0;
                 }
                 self.percent_completed = percent_completed;
+                if let AttackOrder::ProjectileFromCaster = self.order {
+                    self.position.x += self.direction.x * time_passed as f32 / 30.0;
+                    self.position.y += self.direction.y * time_passed as f32 / 30.0;
+                }
             }
         }
     }
     pub fn completed(&self) -> bool {
-        self.time_passed > self.time_to_complete + self.aftercast
+        let time_passed = self.started_at.elapsed().as_millis();
+        time_passed > self.time_to_complete + self.aftercast
     }
     pub fn width_radian(&self) -> f32 {
         let radian = match self.kind {
@@ -410,7 +454,7 @@ impl AttackInfo {
             AttackOrder::LeftThenRight => self.distance,
             AttackOrder::RightThenLeft => self.distance,
             AttackOrder::ExpandingCircle => self.distance * self.percent_completed,
-            _ => self.distance * self.percent_completed,
+            AttackOrder::ProjectileFromCaster => self.distance,
         }
     }
 }

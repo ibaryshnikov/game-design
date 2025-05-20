@@ -174,6 +174,7 @@ impl Hero {
             order: AttackOrder::LeftToRight,
             distance: self.melee_attack_distance,
             state: AttackState::Selected,
+            damage_done: false,
         };
         self.attacking = Some(attack_info);
     }

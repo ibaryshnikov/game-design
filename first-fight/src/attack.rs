@@ -1,7 +1,7 @@
 use iced_core::Color;
 use iced_widget::canvas::{self, stroke, Frame, Path, Stroke};
 
-use shared::attack::{AttackInfo, AttackOrder, AttackState};
+use shared::attack::{AttackInfo, AttackKind, AttackOrder, AttackState};
 
 pub struct AttackView<'a> {
     pub attack_info: &'a AttackInfo,
@@ -21,6 +21,13 @@ impl<'a> AttackView<'a> {
         self.attack_info.width_radian()
     }
     fn draw_selected(&self, frame: &mut Frame) {
+        use AttackKind::*;
+        match self.attack_info.kind {
+            Narrow | Wide | CustomAngle(_) => self.draw_selected_arc(frame),
+            Circle => self.draw_selected_circle(frame),
+        }
+    }
+    fn draw_selected_arc(&self, frame: &mut Frame) {
         let width_radian = self.width_radian();
         let radius = self.attack_info.distance;
         let angle = self.attack_info.get_base_angle();
@@ -40,6 +47,58 @@ impl<'a> AttackView<'a> {
                 ..Stroke::default()
             },
         );
+    }
+    fn draw_selected_circle(&self, frame: &mut Frame) {
+        let info = &self.attack_info;
+        let path = Path::new(|b| {
+            b.circle(
+                iced_core::Point::new(info.position.x, info.position.y),
+                info.distance,
+            );
+        });
+        frame.stroke(
+            &path,
+            Stroke {
+                style: stroke::Style::Solid(Color::from_rgb8(0, 255, 0)),
+                width: 3.0,
+                ..Stroke::default()
+            },
+        );
+    }
+    fn draw_attacking(&self, frame: &mut Frame) {
+        use AttackKind::*;
+        match self.attack_info.kind {
+            Narrow | Wide | CustomAngle(_) => self.draw_attacking_arc(frame),
+            Circle => {
+                if self.attack_info.damage_done {
+                    return;
+                }
+                self.draw_attacking_circle(frame);
+            }
+        }
+    }
+    fn draw_attacking_arc(&self, frame: &mut Frame) {
+        match self.attack_info.order {
+            AttackOrder::LeftThenRight | AttackOrder::RightThenLeft => {
+                self.draw_two_parts(frame);
+                return;
+            }
+            _ => (),
+        }
+        let info = &self.attack_info;
+        let width_radian = info.width_radian();
+        let radius = info.get_radius();
+        let angle = info.get_base_angle();
+
+        let (start_angle, end_angle) = info.get_angles(angle, width_radian);
+        let start = iced_core::Point::new(info.position.x, info.position.y);
+        draw_circle_segment(frame, start, radius, start_angle, end_angle);
+
+        if let AttackOrder::SidesToCenter = info.order {
+            let end_angle = angle + width_radian;
+            let start_angle = end_angle - width_radian * info.percent_completed;
+            draw_circle_segment(frame, start, radius, start_angle, end_angle)
+        }
     }
     fn draw_two_parts(&self, frame: &mut Frame) {
         let info = &self.attack_info;
@@ -64,28 +123,16 @@ impl<'a> AttackView<'a> {
             draw_circle_segment(frame, start, radius, start_angle, end_angle);
         }
     }
-    fn draw_attacking(&self, frame: &mut Frame) {
-        match self.attack_info.order {
-            AttackOrder::LeftThenRight | AttackOrder::RightThenLeft => {
-                self.draw_two_parts(frame);
-                return;
-            }
-            _ => (),
-        }
+    fn draw_attacking_circle(&self, frame: &mut Frame) {
         let info = &self.attack_info;
-        let width_radian = info.width_radian();
         let radius = info.get_radius();
-        let angle = info.get_base_angle();
-
-        let (start_angle, end_angle) = info.get_angles(angle, width_radian);
-        let start = iced_core::Point::new(info.position.x, info.position.y);
-        draw_circle_segment(frame, start, radius, start_angle, end_angle);
-
-        if let AttackOrder::SidesToCenter = info.order {
-            let end_angle = angle + width_radian;
-            let start_angle = end_angle - width_radian * info.percent_completed;
-            draw_circle_segment(frame, start, radius, start_angle, end_angle)
-        }
+        let path = Path::new(|b| {
+            b.circle(
+                iced_core::Point::new(info.position.x, info.position.y),
+                radius,
+            );
+        });
+        frame.fill(&path, Color::from_rgb8(255, 0, 0));
     }
 }
 

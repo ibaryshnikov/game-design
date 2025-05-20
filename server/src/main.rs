@@ -42,10 +42,12 @@ async fn main() {
     let app = Router::new()
         .route("/login", routing::post(login_user))
         .route("/ws", routing::get(ws_handler))
-        .route("/", routing::get(|| async { "hello from axum" }))
+        .route("/", routing::get(|| async { "hello from axum\n" }))
         .layer(CorsLayer::new().allow_origin("*".parse::<HeaderValue>().unwrap()))
         .with_state(Arc::new(state));
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    let address = "0.0.0.0:8080";
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
+    println!("listening at {address}");
     axum::serve(listener, app).await.unwrap();
 }
 

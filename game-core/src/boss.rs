@@ -1,8 +1,8 @@
 use std::time::Instant;
 
-use nalgebra::Point2;
+use nalgebra::{Point2, Vector2};
 
-use shared::attack::{AttackInfo, AttackKind, RecoverInfo};
+use shared::attack::{AttackInfo, AttackKind, AttackOrder, RecoverInfo};
 use shared::character::Character;
 use shared::check_hit;
 use shared::npc::NpcConstructor;
@@ -15,6 +15,7 @@ pub struct Boss {
     close_melee_attack_distance: f32,
     attack_index: u8,
     pub melee_attack_distance: f32,
+    ranged_attack_index: u8,
     pub ranged_attack_distance: f32,
     pub attacking: Option<AttackInfo>,
     recovering: Option<RecoverInfo>,
@@ -38,6 +39,7 @@ impl Boss {
             close_melee_attack_distance: 150.0,
             attack_index: 0,
             melee_attack_distance: 300.0,
+            ranged_attack_index: 0,
             ranged_attack_distance: 500.0,
             attacking: None,
             recovering: None,
@@ -57,6 +59,7 @@ impl Boss {
             close_melee_attack_distance,
             attack_index: 0,
             melee_attack_distance,
+            ranged_attack_index: 0,
             ranged_attack_distance,
             attacking: None,
             recovering: None,
@@ -85,20 +88,44 @@ impl Boss {
             return;
         };
         attack_info.update();
+        match attack_info.order {
+            AttackOrder::ProjectileFromCaster => {
+                if !attack_info.damage_done {
+                    if check_hit(attack_info, attack_info.distance, hero.position) {
+                        hero.receive_damage();
+                        attack_info.damage_done = true;
+                    }
+                }
+            }
+            _ => (),
+        }
         if attack_info.completed() {
-            if check_hit(attack_info, attack_info.distance, hero.position) {
-                hero.receive_damage();
+            if let AttackOrder::ProjectileFromCaster = attack_info.order {
+                // do nothing, we did check_hit above
+            } else {
+                if check_hit(attack_info, attack_info.distance, hero.position) {
+                    hero.receive_damage();
+                }
             }
             let recover_info = RecoverInfo {
                 started_at: Instant::now(),
                 time_to_complete: 500,
             };
             self.recovering = Some(recover_info);
-            if let AttackKind::Wide = attack_info.kind {
-                self.attack_index += 1;
-                if self.attack_index > 5 {
-                    self.attack_index = 0;
+            match attack_info.kind {
+                AttackKind::Wide => {
+                    self.attack_index += 1;
+                    if self.attack_index > 5 {
+                        self.attack_index = 0;
+                    }
                 }
+                AttackKind::Circle => {
+                    self.ranged_attack_index += 1;
+                    if self.ranged_attack_index > 1 {
+                        self.ranged_attack_index = 0;
+                    }
+                }
+                _ => (),
             }
             self.attacking = None;
         }
@@ -152,6 +179,18 @@ impl Boss {
             // println!("Character is in range, selecting target");
             let attack_info =
                 AttackInfo::narrow(self.position, direction, self.melee_attack_distance);
+            self.attacking = Some(attack_info);
+            return;
+        }
+        if distance < self.ranged_attack_distance {
+            let attack_info = match self.ranged_attack_index {
+                0 => {
+                    let direction = Vector2::new(-direction.x, -direction.y);
+                    AttackInfo::fireball(self.position, direction, 20.0)
+                }
+                1 => AttackInfo::fireblast(character_position, direction, 70.0),
+                _ => panic!("Unexpected ranged attack index"),
+            };
             self.attacking = Some(attack_info);
         }
     }

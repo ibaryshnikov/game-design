@@ -10,9 +10,34 @@ pub mod position;
 pub mod server;
 pub mod types;
 
-use attack::AttackInfo;
+use attack::{AttackInfo, AttackKind};
 
 pub fn check_hit(
+    attack_info: &AttackInfo,
+    attack_distance: f32,
+    target_position: Point2<f32>,
+) -> bool {
+    use AttackKind::*;
+    match attack_info.kind {
+        Narrow | Wide | CustomAngle(_) => {
+            check_hit_arc(attack_info, attack_distance, target_position)
+        }
+        Circle => check_hit_circle(attack_info, attack_distance, target_position),
+    }
+}
+
+pub fn check_hit_circle(
+    attack_info: &AttackInfo,
+    attack_distance: f32,
+    target_position: Point2<f32>,
+) -> bool {
+    let dx = attack_info.position.x - target_position.x;
+    let dy = attack_info.position.y - target_position.y;
+    let dd = (dx * dx + dy * dy).sqrt();
+    dd < attack_distance + 20.0
+}
+
+pub fn check_hit_arc(
     attack_info: &AttackInfo,
     attack_distance: f32,
     target_position: Point2<f32>,

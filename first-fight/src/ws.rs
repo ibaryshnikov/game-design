@@ -103,8 +103,8 @@ pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
                         println!("WebSocket closed by the server");
                         if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsDisconnected)) {
                             tracing::error!("Error sending Message in ws: {}", e);
-                            break;
                         }
+                        break;
                     }
                 }
             }
