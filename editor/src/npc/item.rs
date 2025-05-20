@@ -1,20 +1,30 @@
-use iced::widget::{button, column, container, row, text, text_input};
+use iced::widget::{button, column, container, pick_list, row, text, text_input, Scrollable};
 use iced::{Alignment, Element};
 
-use shared::npc::NpcConstructor;
+use shared::npc::{NpcAttackInfo, NpcConstructor};
 
 use super::get_item_file_path;
+use crate::attack::list::{load_available_attack_list, AttackInfo};
 
 pub struct Page {
     id: u32,
     data: NpcConstructor,
+    selected_close_melee_attack: Option<NpcAttackInfo>,
+    selected_melee_attack: Option<NpcAttackInfo>,
+    selected_ranged_attack: Option<NpcAttackInfo>,
+    available_attack_list: Vec<NpcAttackInfo>,
 }
 
 impl Page {
     pub fn load_by_id(id: u32) -> Self {
+        let available_attack_list = make_picker_items(load_available_attack_list());
         Page {
             id,
             data: load_by_id(id),
+            selected_close_melee_attack: None,
+            selected_melee_attack: None,
+            selected_ranged_attack: None,
+            available_attack_list,
         }
     }
 }
@@ -24,8 +34,17 @@ pub enum Message {
     ReadFile,
     WriteFile,
     ChangeCloseMeleeAttackDistance(String),
+    SelectCloseMeleeAttack(NpcAttackInfo),
+    AddCloseMeleeAttack(NpcAttackInfo),
+    RemoveCloseMeleeAttack(usize),
     ChangeMeleeAttackDistance(String),
+    SelectMeleeAttack(NpcAttackInfo),
+    AddMeleeAttack(NpcAttackInfo),
+    RemoveMeleeAttack(usize),
     ChangeRangedAttackDistance(String),
+    SelectRangedAttack(NpcAttackInfo),
+    AddRangedAttack(NpcAttackInfo),
+    RemoveRangedAttack(usize),
 }
 
 fn read_file() -> Option<NpcConstructor> {
@@ -51,6 +70,14 @@ pub fn save_by_id(npc: &NpcConstructor, id: u32) {
     std::fs::write(file_path, contents).expect("Should write NpcConstructor to a file");
 }
 
+fn make_picker_items(npc_list: Vec<AttackInfo>) -> Vec<NpcAttackInfo> {
+    npc_list
+        .into_iter()
+        .filter(|item| item.status.is_active())
+        .map(|AttackInfo { id, name, .. }| NpcAttackInfo { id, name })
+        .collect()
+}
+
 impl Page {
     pub fn update(&mut self, message: Message) {
         match message {
@@ -65,6 +92,18 @@ impl Page {
                 };
                 self.data.close_melee_attack_distance = parsed;
             }
+            Message::SelectCloseMeleeAttack(attack) => {
+                self.selected_close_melee_attack = Some(attack);
+            }
+            Message::AddCloseMeleeAttack(attack) => {
+                self.data.close_melee_attacks.push(attack);
+            }
+            Message::RemoveCloseMeleeAttack(index) => {
+                if index >= self.data.close_melee_attacks.len() {
+                    return;
+                }
+                self.data.close_melee_attacks.remove(index);
+            }
             Message::ChangeMeleeAttackDistance(value) => {
                 let parsed = value.parse::<f32>().ok();
                 let Some(parsed) = parsed else {
@@ -72,12 +111,36 @@ impl Page {
                 };
                 self.data.melee_attack_distance = parsed;
             }
+            Message::SelectMeleeAttack(attack) => {
+                self.selected_melee_attack = Some(attack);
+            }
+            Message::AddMeleeAttack(attack) => {
+                self.data.melee_attacks.push(attack);
+            }
+            Message::RemoveMeleeAttack(index) => {
+                if index >= self.data.melee_attacks.len() {
+                    return;
+                }
+                self.data.melee_attacks.remove(index);
+            }
             Message::ChangeRangedAttackDistance(value) => {
                 let parsed = value.parse::<f32>().ok();
                 let Some(parsed) = parsed else {
                     return;
                 };
                 self.data.ranged_attack_distance = parsed;
+            }
+            Message::SelectRangedAttack(attack) => {
+                self.selected_ranged_attack = Some(attack);
+            }
+            Message::AddRangedAttack(attack) => {
+                self.data.ranged_attacks.push(attack);
+            }
+            Message::RemoveRangedAttack(index) => {
+                if index >= self.data.ranged_attacks.len() {
+                    return;
+                }
+                self.data.ranged_attacks.remove(index);
             }
         }
     }
@@ -88,6 +151,75 @@ impl Page {
             button("Save").on_press(Message::WriteFile),
         ]
         .align_x(Alignment::Center)
+        .spacing(10);
+
+        let mut close_melee_attack_list = column![].align_x(Alignment::Center).spacing(10);
+        for (index, attack_id) in self.data.close_melee_attacks.iter().enumerate() {
+            let attack_row = row![
+                text(format!("Attack id: {}", attack_id)),
+                button("delete").on_press(Message::RemoveCloseMeleeAttack(index)),
+            ]
+            .spacing(10);
+            close_melee_attack_list = close_melee_attack_list.push(attack_row);
+        }
+        let message_add_close_melee_attack = self
+            .selected_close_melee_attack
+            .clone()
+            .map(Message::AddCloseMeleeAttack);
+        let add_close_melee_attack_row = row![
+            pick_list(
+                &self.available_attack_list[..],
+                self.selected_close_melee_attack.clone(),
+                Message::SelectCloseMeleeAttack
+            ),
+            button("add").on_press_maybe(message_add_close_melee_attack),
+        ]
+        .spacing(10);
+
+        let mut melee_attack_list = column![].align_x(Alignment::Center).spacing(10);
+        for (index, attack_id) in self.data.melee_attacks.iter().enumerate() {
+            let attack_row = row![
+                text(format!("Attack id: {}", attack_id)),
+                button("delete").on_press(Message::RemoveMeleeAttack(index)),
+            ]
+            .spacing(10);
+            melee_attack_list = melee_attack_list.push(attack_row);
+        }
+        let message_add_melee_attack = self
+            .selected_melee_attack
+            .clone()
+            .map(Message::AddMeleeAttack);
+        let add_melee_attack_row = row![
+            pick_list(
+                &self.available_attack_list[..],
+                self.selected_melee_attack.clone(),
+                Message::SelectMeleeAttack
+            ),
+            button("add").on_press_maybe(message_add_melee_attack),
+        ]
+        .spacing(10);
+
+        let mut ranged_attack_list = column![].align_x(Alignment::Center).spacing(10);
+        for (index, attack_id) in self.data.ranged_attacks.iter().enumerate() {
+            let attack_row = row![
+                text(format!("Attack id: {}", attack_id)),
+                button("delete").on_press(Message::RemoveRangedAttack(index)),
+            ]
+            .spacing(10);
+            ranged_attack_list = ranged_attack_list.push(attack_row);
+        }
+        let message_add_ranged_attack = self
+            .selected_ranged_attack
+            .clone()
+            .map(Message::AddRangedAttack);
+        let add_ranged_attack_row = row![
+            pick_list(
+                &self.available_attack_list[..],
+                self.selected_ranged_attack.clone(),
+                Message::SelectRangedAttack
+            ),
+            button("add").on_press_maybe(message_add_ranged_attack),
+        ]
         .spacing(10);
 
         let npc_details_column = column![
@@ -101,6 +233,10 @@ impl Page {
             ]
             .align_y(Alignment::Center)
             .spacing(10),
+            text("Add close melee attack:"),
+            add_close_melee_attack_row,
+            text("Close melee attacks:"),
+            close_melee_attack_list,
             row![
                 text("Melee attack distance"),
                 text_input(
@@ -111,6 +247,10 @@ impl Page {
             ]
             .align_y(Alignment::Center)
             .spacing(10),
+            text("Add melee attack:"),
+            add_melee_attack_row,
+            text("Melee attacks:"),
+            melee_attack_list,
             row![
                 text("Ranged attack distance"),
                 text_input(
@@ -121,10 +261,15 @@ impl Page {
             ]
             .align_y(Alignment::Center)
             .spacing(10),
+            text("Add ranged attack:"),
+            add_ranged_attack_row,
+            text("Ranged attacks:"),
+            ranged_attack_list,
         ]
         .align_x(Alignment::Start)
         .spacing(10);
-        let npc_details = container(npc_details_column).width(300);
+        let scrollable_details = Scrollable::new(npc_details_column);
+        let npc_details = container(scrollable_details).width(500);
         contents = contents.push(npc_details);
 
         contents.into()

@@ -24,6 +24,8 @@ pub enum Message {
     ReadFile,
     WriteFile,
     ChangeDelay(String),
+    ChangeTimeToComplete(String),
+    ChangeAftercast(String),
     ChangeOrder(AttackOrder),
     ChangeKind(AttackKind),
 }
@@ -65,6 +67,20 @@ impl Page {
                 };
                 self.data.delay = parsed;
             }
+            Message::ChangeTimeToComplete(value) => {
+                let parsed = value.parse::<u128>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.time_to_complete = parsed;
+            }
+            Message::ChangeAftercast(value) => {
+                let parsed = value.parse::<u128>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.aftercast = parsed;
+            }
             Message::ChangeOrder(order) => {
                 self.data.order = order;
             }
@@ -88,6 +104,23 @@ impl Page {
                 text("Delay"),
                 text_input("Attack delay", &format!("{}", self.data.delay))
                     .on_input(Message::ChangeDelay),
+            ]
+            .align_y(Alignment::Center)
+            .spacing(10),
+            row![
+                text("Time to complete"),
+                text_input(
+                    "Attack time to complete",
+                    &format!("{}", self.data.time_to_complete)
+                )
+                .on_input(Message::ChangeTimeToComplete),
+            ]
+            .align_y(Alignment::Center)
+            .spacing(10),
+            row![
+                text("Aftercast"),
+                text_input("Attack aftercast", &format!("{}", self.data.aftercast))
+                    .on_input(Message::ChangeAftercast),
             ]
             .align_y(Alignment::Center)
             .spacing(10),

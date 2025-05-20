@@ -25,10 +25,10 @@ pub struct AttackList {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct AttackInfo {
-    id: u32,
-    name: String,
-    status: EntryStatus,
+pub struct AttackInfo {
+    pub id: u32,
+    pub name: String,
+    pub status: EntryStatus,
 }
 
 #[derive(Debug, Clone)]
@@ -53,6 +53,10 @@ fn write_file(attack_list: &AttackList) {
 
 fn find_entry_mut(list: &mut [AttackInfo], id: u32) -> Option<&mut AttackInfo> {
     list.iter_mut().find(|item| item.id == id)
+}
+
+pub fn load_available_attack_list() -> Vec<AttackInfo> {
+    read_file().map(|data| data.list).unwrap_or_default()
 }
 
 fn show_entry(attack_list: &mut AttackList, id: u32) {

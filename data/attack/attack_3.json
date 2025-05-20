@@ -1,5 +1,5 @@
 {
-  "name": "Wide arc",
+  "name": "Wide arc LeftToRight",
   "position": [
     0.0,
     0.0
@@ -9,10 +9,10 @@
     0.0
   ],
   "delay": 200,
-  "time_to_complete": 600,
+  "time_to_complete": 400,
   "aftercast": 300,
   "kind": "Wide",
-  "order": "CloseToFar",
+  "order": "LeftToRight",
   "distance": 0.0,
   "state": "Selected"
 }

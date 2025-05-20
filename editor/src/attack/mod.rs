@@ -8,7 +8,7 @@ const FOLDER_NAME: &str = "attack/";
 const FOLDER_PATH: &str = combine!(DATA_PATH, FOLDER_NAME);
 
 mod item;
-mod list;
+pub mod list;
 
 fn get_item_file_path(id: u32) -> String {
     format!("{FOLDER_PATH}/{FILE_PREFIX}_{id}.json")

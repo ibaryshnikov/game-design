@@ -148,6 +148,8 @@ fn draw_circle_segment(
 }
 
 fn circle_segment(center: iced_core::Point, radius: f32, start_angle: f32, end_angle: f32) -> Path {
+    // println!("center.x {} center.y {}", center.x, center.y);
+    // println!("radius {} start angle {} end angle {}", radius, start_angle, end_angle);
     let side = iced_core::Point::new(
         center.x + radius * start_angle.cos(),
         center.y + radius * start_angle.sin(),

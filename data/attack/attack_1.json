@@ -8,9 +8,9 @@
     0.0,
     0.0
   ],
-  "delay": 0,
-  "time_to_complete": 0,
-  "aftercast": 0,
+  "delay": 200,
+  "time_to_complete": 500,
+  "aftercast": 300,
   "kind": "Narrow",
   "order": "CloseToFar",
   "distance": 0.0,

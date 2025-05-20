@@ -1,5 +1,5 @@
 {
-  "last_id": 2,
+  "last_id": 5,
   "list": [
     {
       "id": 1,
@@ -9,6 +9,21 @@
     {
       "id": 2,
       "name": "Wide arc",
+      "status": "Active"
+    },
+    {
+      "id": 3,
+      "name": "Wide arc LeftToRight",
+      "status": "Active"
+    },
+    {
+      "id": 4,
+      "name": "Fireball",
+      "status": "Active"
+    },
+    {
+      "id": 5,
+      "name": "Fireblast",
       "status": "Active"
     }
   ]

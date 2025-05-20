@@ -82,13 +82,13 @@ impl Display for AttackOrder {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum AttackState {
     Selected,
     Attacking,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AttackConstructor {
     pub name: String,
     pub position: Point2<f32>,
@@ -146,31 +146,33 @@ pub struct AttackInfo {
 }
 
 impl AttackInfo {
-    fn from_constructor(constructor: AttackConstructor) -> Self {
+    pub fn from_constructor(
+        constructor: AttackConstructor,
+        position: Point2<f32>,
+        direction: Vector2<f32>,
+        distance: f32,
+    ) -> Self {
         let AttackConstructor {
-            position,
-            direction,
+            // position,
+            // direction,
             delay,
             time_to_complete,
             aftercast,
             kind,
             order,
-            distance,
+            // distance,
             state,
             ..
         } = constructor;
-        let started_at = Instant::now();
-        let time_passed = 0;
-        let percent_completed = 0.0;
         AttackInfo {
             position,
             direction,
-            started_at,
-            time_passed,
+            started_at: Instant::now(),
+            time_passed: 0,
             delay,
             time_to_complete,
             aftercast,
-            percent_completed,
+            percent_completed: 0.0,
             kind,
             order,
             distance,
@@ -418,6 +420,12 @@ impl AttackInfo {
     }
     pub fn get_base_angle(&self) -> f32 {
         let tan_a = self.direction.y / self.direction.x;
+        if !tan_a.is_finite() {
+            panic!(
+                "Direction is not defined in AttackInfo: x {}, y {}",
+                self.direction.x, self.direction.y
+            );
+        }
         let mut angle = tan_a.atan();
         if self.direction.x > 0.0 {
             angle += std::f32::consts::PI;

@@ -8,3 +8,4 @@ edition = "2021"
 nalgebra = { version = "0.33", features = ["serde-serialize"] }
 rmp-serde = "1.3"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

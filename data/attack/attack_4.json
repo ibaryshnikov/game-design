@@ -1,5 +1,5 @@
 {
-  "name": "Wide arc",
+  "name": "Fireball",
   "position": [
     0.0,
     0.0
@@ -8,11 +8,11 @@
     0.0,
     0.0
   ],
-  "delay": 200,
-  "time_to_complete": 600,
+  "delay": 100,
+  "time_to_complete": 400,
   "aftercast": 300,
-  "kind": "Wide",
-  "order": "CloseToFar",
+  "kind": "Circle",
+  "order": "ProjectileFromCaster",
   "distance": 0.0,
   "state": "Selected"
 }
