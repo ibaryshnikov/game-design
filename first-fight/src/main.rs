@@ -8,7 +8,6 @@ use iced_winit::clipboard::Clipboard;
 use iced_winit::core::{mouse, renderer, window, Event, Font, Pixels, Size, Theme};
 use iced_winit::runtime::user_interface::{self, UserInterface};
 use iced_winit::{conversion, winit};
-use tokio::sync::mpsc;
 use wgpu::{Device, Instance, Queue, TextureFormat};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, KeyEvent, StartCause, WindowEvent};
@@ -26,28 +25,7 @@ mod ws;
 
 use ui_app::UiApp;
 
-#[derive(Debug, Clone)]
-enum ServerAction {}
-
-#[derive(Debug, Clone)]
-enum Message {
-    WsChannel(mpsc::Sender<ws::LocalMessage>),
-    WsConnected,
-    WsDisconnected,
-    WsMessage(String),
-    ServerAction(ServerAction),
-    Tick,
-    SwitchToLevelSelect,
-    Start(u32),
-    SelectLevel(u32),
-    Retry,
-    Move(KeyActionKind, Move),
-    HeroDash,
-    HeroAttack,
-    None,
-}
-
-fn key_event_to_message(event: &KeyEvent) -> Message {
+fn key_event_to_message(event: &KeyEvent) -> ui_app::Message {
     match event.physical_key {
         PhysicalKey::Code(code) => {
             let action = match code {
@@ -57,32 +35,32 @@ fn key_event_to_message(event: &KeyEvent) -> Message {
                 KeyCode::KeyD => Move::Right,
                 KeyCode::ShiftLeft | KeyCode::ShiftRight => {
                     if let ElementState::Pressed = event.state {
-                        return Message::HeroDash;
+                        return ui_app::Message::HeroDash;
                     }
-                    return Message::None;
+                    return ui_app::Message::None;
                 }
                 KeyCode::Space => {
                     if let ElementState::Pressed = event.state {
-                        return Message::HeroAttack;
+                        return ui_app::Message::HeroAttack;
                     }
-                    return Message::None;
+                    return ui_app::Message::None;
                 }
-                _ => return Message::None,
+                _ => return ui_app::Message::None,
             };
             let kind = match event.state {
                 ElementState::Pressed => KeyActionKind::Pressed,
                 ElementState::Released => KeyActionKind::Released,
             };
-            Message::Move(kind, action)
+            ui_app::Message::Move(kind, action)
         }
-        _ => Message::None,
+        _ => ui_app::Message::None,
     }
 }
 
 #[derive(Debug)]
 enum UserEvent {
     Tick,
-    Message(Message),
+    Message(ui_app::Message),
 }
 
 struct App {
@@ -234,7 +212,7 @@ impl ApplicationHandler<UserEvent> for App {
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
         match event {
             UserEvent::Tick => {
-                self.ui_app.update(Message::Tick);
+                self.ui_app.update(ui_app::Message::Tick);
                 self.request_redraw();
             }
             UserEvent::Message(message) => {

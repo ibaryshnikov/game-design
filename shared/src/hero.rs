@@ -4,11 +4,11 @@ use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Moving {
-    left: bool,
-    right: bool,
-    up: bool,
-    down: bool,
+pub struct Moving {
+    pub left: bool,
+    pub right: bool,
+    pub up: bool,
+    pub down: bool,
 }
 #[derive(Debug)]
 pub struct DashInfo {

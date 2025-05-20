@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use nalgebra::{Point2, Vector2};
 
-use crate::moves::Moving;
+use shared::hero::Moving;
 
 pub struct Npc {
     pub id: String,

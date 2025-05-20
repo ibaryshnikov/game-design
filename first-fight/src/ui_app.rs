@@ -9,12 +9,36 @@ use nalgebra::Point2;
 use tokio::sync::mpsc;
 use winit::event_loop::EventLoopProxy;
 
+use game_core::boss::Boss;
+use game_core::hero::Hero;
 use shared::level::{Level, LevelInfo, LevelList};
 use shared::npc::NpcConstructor;
+use shared::types::{KeyActionKind, Move};
 
-use crate::boss::Boss;
-use crate::hero::Hero;
-use crate::{ws, Message, UserEvent};
+use crate::boss::BossView;
+use crate::hero::HeroView;
+use crate::{ws, UserEvent};
+
+#[derive(Debug, Clone)]
+pub enum ServerAction {}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    WsChannel(mpsc::Sender<ws::LocalMessage>),
+    WsConnected,
+    WsDisconnected,
+    WsMessage(String),
+    ServerAction(ServerAction),
+    Tick,
+    SwitchToLevelSelect,
+    Start(u32),
+    SelectLevel(u32),
+    Retry,
+    Move(KeyActionKind, Move),
+    HeroDash,
+    HeroAttack,
+    None,
+}
 
 enum FightState {
     Pending,
@@ -27,8 +51,8 @@ enum FightState {
 pub struct UiApp {
     proxy: EventLoopProxy<UserEvent>,
     cache: Cache,
-    boss: Boss,
-    hero: Hero,
+    boss: BossView,
+    hero: HeroView,
     characters: HashMap<u128, Hero>,
     npc_list: HashMap<u128, Boss>,
     state: FightState,
@@ -59,8 +83,10 @@ impl UiApp {
     pub fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
         let level_list = load_level_list();
         let boss_constructor = load_npc_by_id(1);
-        let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
-        let hero = Hero::new(Point2::new(250.0, 200.0));
+        let boss_info = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
+        let boss = BossView { boss_info };
+        let hero_info = Hero::new(Point2::new(250.0, 200.0));
+        let hero = HeroView { hero_info };
         UiApp {
             proxy,
             cache: Cache::new(),
@@ -78,7 +104,8 @@ impl UiApp {
         let level = load_level_by_id(id);
         let npc = &level.npc_list[0];
         let constructor = load_npc_by_id(npc.id);
-        self.boss = Boss::from_constructor(Point2::new(512.0, 384.0), constructor);
+        let boss_info = Boss::from_constructor(Point2::new(512.0, 384.0), constructor);
+        self.boss = BossView { boss_info };
     }
 }
 
@@ -104,34 +131,36 @@ impl UiApp {
             }
             Message::Move(kind, movement) => {
                 // println!("Moving: {:?} {:?}", kind, movement);
-                self.hero.handle_move_action(kind.clone(), movement.clone());
+                self.hero
+                    .hero_info
+                    .handle_move_action(kind.clone(), movement.clone());
                 if let Some(sender) = &mut self.ws_sender {
                     let _ = sender.try_send(ws::LocalMessage::Move(kind, movement));
                 }
             }
             Message::HeroDash => {
-                self.hero.dash();
+                self.hero.hero_info.dash();
                 if let Some(sender) = &mut self.ws_sender {
                     let _ = sender.try_send(ws::LocalMessage::HeroDash);
                 }
             }
             Message::HeroAttack => {
-                self.hero.check_attack();
+                self.hero.hero_info.check_attack();
                 if let Some(sender) = &mut self.ws_sender {
                     let _ = sender.try_send(ws::LocalMessage::HeroAttack);
                 }
             }
             Message::Tick => {
-                self.hero.update(&mut self.boss);
-                self.boss.update(&mut self.hero);
-                if self.hero.hp <= 0 {
+                self.hero.hero_info.update(&mut self.boss.boss_info);
+                self.boss.boss_info.update(&mut self.hero.hero_info);
+                if self.hero.hero_info.defeated() {
                     self.state = FightState::Loss;
-                    self.hero.stop();
-                    self.boss.stop();
-                } else if self.boss.hp <= 0 {
+                    self.hero.hero_info.stop();
+                    self.boss.boss_info.stop();
+                } else if self.boss.boss_info.defeated() {
                     self.state = FightState::Win;
-                    self.hero.stop();
-                    self.boss.stop();
+                    self.hero.hero_info.stop();
+                    self.boss.boss_info.stop();
                 }
             }
             Message::SwitchToLevelSelect => {
@@ -150,8 +179,8 @@ impl UiApp {
                 self.state = FightState::Action;
             }
             Message::Retry => {
-                self.hero.reset();
-                self.boss.reset();
+                self.hero.hero_info.reset();
+                self.boss.boss_info.reset();
                 self.state = FightState::Action;
             }
             _ => (),

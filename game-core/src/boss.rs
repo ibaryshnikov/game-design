@@ -5,6 +5,7 @@ use nalgebra::Point2;
 use shared::attack::{AttackInfo, AttackKind, RecoverInfo};
 use shared::character::Character;
 use shared::check_hit;
+use shared::npc::NpcConstructor;
 use shared::position::{direction_from, distance_between};
 
 use crate::hero::Hero;
@@ -38,6 +39,25 @@ impl Boss {
             attack_index: 0,
             melee_attack_distance: 300.0,
             ranged_attack_distance: 500.0,
+            attacking: None,
+            recovering: None,
+            hp: 300,
+            max_hp: 300,
+        }
+    }
+    pub fn from_constructor(position: Point2<f32>, constructor: NpcConstructor) -> Self {
+        let NpcConstructor {
+            close_melee_attack_distance,
+            melee_attack_distance,
+            ranged_attack_distance,
+            ..
+        } = constructor;
+        Boss {
+            position,
+            close_melee_attack_distance,
+            attack_index: 0,
+            melee_attack_distance,
+            ranged_attack_distance,
             attacking: None,
             recovering: None,
             hp: 300,
@@ -83,6 +103,14 @@ impl Boss {
             self.attacking = None;
         }
     }
+    // if the boss attacks' are loaded from the external file
+    // and look like Vec<AttackConstructor>
+    // then it can be like
+    // fn select_attack(
+    //     attacks: Vec<AttackConstructor>,
+    //     self_position: Position,
+    //     player_position: Position,
+    // ) -> AttackConstructor
     fn check_new_attack(&mut self, character_position: Point2<f32>) {
         if self.attacking.is_some() || self.recovering.is_some() {
             return;
@@ -136,7 +164,10 @@ impl Boss {
             self.hp = 0;
         }
     }
-    fn hp_left_percent(&self) -> f32 {
+    pub fn hp_left_percent(&self) -> f32 {
         self.hp as f32 / self.max_hp as f32
+    }
+    pub fn defeated(&self) -> bool {
+        self.hp <= 0
     }
 }

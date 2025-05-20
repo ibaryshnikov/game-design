@@ -6,7 +6,6 @@ use tokio::time;
 use shared::types::Message;
 
 use crate::broadcaster;
-use crate::hero::Hero;
 use crate::stage::Stage;
 use crate::types::{GameLoopReceiver, LoopMessage};
 

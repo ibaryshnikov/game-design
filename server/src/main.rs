@@ -10,16 +10,13 @@ use futures::stream::StreamExt;
 use http::HeaderValue;
 use tokio::sync::mpsc;
 use tower_http::cors::CorsLayer;
-use tower_http::validate_request::ValidateRequestHeaderLayer;
+// use tower_http::validate_request::ValidateRequestHeaderLayer;
 use uuid::Uuid;
 
 use shared::types::{KeyActionKind, Message as ServerMessage, Move};
 
-mod boss;
 mod broadcaster;
 mod game_loop;
-mod hero;
-mod moves;
 mod npc;
 mod stage;
 mod types;

@@ -3,20 +3,13 @@ use iced_widget::canvas::{self, stroke, Frame, Path, Stroke};
 
 use shared::attack::{AttackInfo, AttackOrder, AttackState};
 
-pub struct AttackView {
-    pub attack_info: AttackInfo,
+pub struct AttackView<'a> {
+    pub attack_info: &'a AttackInfo,
 }
 
-impl AttackView {
-    pub fn new(attack_info: AttackInfo) -> Self {
+impl<'a> AttackView<'a> {
+    pub fn new(attack_info: &'a AttackInfo) -> Self {
         Self { attack_info }
-    }
-
-    pub fn update(&mut self) {
-        self.attack_info.update();
-    }
-    pub fn completed(&self) -> bool {
-        self.attack_info.completed()
     }
     pub fn draw(&self, frame: &mut Frame) {
         match self.attack_info.state {

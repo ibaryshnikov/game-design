@@ -11,7 +11,8 @@ use tungstenite::{Error as WsError, Message as WsMessage};
 
 use shared::types::{KeyActionKind, Message as SharedMessage, Move};
 
-use crate::{Message, UserEvent};
+use crate::ui_app::Message;
+use crate::UserEvent;
 
 #[derive(Debug, Clone)]
 pub enum LocalMessage {
