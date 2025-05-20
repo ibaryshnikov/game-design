@@ -5,7 +5,7 @@ use futures::sink::{Sink, SinkExt};
 use futures::stream::StreamExt;
 use iced_winit::winit::event_loop::EventLoopProxy;
 use tokio::net::TcpStream;
-use tokio::sync::mpsc::{self, Sender};
+use tokio::sync::mpsc;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
 use tungstenite::{Error as WsError, Message as WsMessage};
 
