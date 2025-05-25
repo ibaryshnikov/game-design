@@ -1,7 +1,6 @@
 {
   "name": "First boss",
-  "close_melee_attack_distance": 150.0,
-  "close_melee_attacks": [
+  "attacks": [
     {
       "id": 3,
       "name": "Wide arc LeftToRight"
@@ -9,17 +8,11 @@
     {
       "id": 2,
       "name": "Wide arc"
-    }
-  ],
-  "melee_attack_distance": 300.0,
-  "melee_attacks": [
+    },
     {
       "id": 1,
       "name": "Narrow arc"
-    }
-  ],
-  "ranged_attack_distance": 500.0,
-  "ranged_attacks": [
+    },
     {
       "id": 4,
       "name": "Fireball"

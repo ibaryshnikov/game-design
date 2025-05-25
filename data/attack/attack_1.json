@@ -13,6 +13,6 @@
   "aftercast": 300,
   "kind": "Narrow",
   "order": "CloseToFar",
-  "distance": 0.0,
+  "range": 300.0,
   "state": "Selected"
 }

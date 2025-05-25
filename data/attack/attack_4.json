@@ -13,6 +13,6 @@
   "aftercast": 300,
   "kind": "Circle",
   "order": "ProjectileFromCaster",
-  "distance": 0.0,
+  "range": 500.0,
   "state": "Selected"
 }

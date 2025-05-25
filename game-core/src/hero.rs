@@ -172,7 +172,7 @@ impl Hero {
             percent_completed: 0.0,
             kind: AttackKind::CustomAngle(1.0),
             order: AttackOrder::LeftToRight,
-            distance: self.melee_attack_distance,
+            range: self.melee_attack_distance,
             state: AttackState::Selected,
             damage_done: false,
         };

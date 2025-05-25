@@ -1,4 +1,4 @@
-use iced::widget::{button, column, container, pick_list, row, text, text_input, Scrollable};
+use iced::widget::{button, column, container, pick_list, row, text, Scrollable};
 use iced::{Alignment, Element};
 
 use shared::npc::{NpcAttackInfo, NpcConstructor};
@@ -9,9 +9,7 @@ use crate::attack::list::{load_available_attack_list, AttackInfo};
 pub struct Page {
     id: u32,
     data: NpcConstructor,
-    selected_close_melee_attack: Option<NpcAttackInfo>,
-    selected_melee_attack: Option<NpcAttackInfo>,
-    selected_ranged_attack: Option<NpcAttackInfo>,
+    selected_attack: Option<NpcAttackInfo>,
     available_attack_list: Vec<NpcAttackInfo>,
 }
 
@@ -21,9 +19,7 @@ impl Page {
         Page {
             id,
             data: load_by_id(id),
-            selected_close_melee_attack: None,
-            selected_melee_attack: None,
-            selected_ranged_attack: None,
+            selected_attack: None,
             available_attack_list,
         }
     }
@@ -33,18 +29,9 @@ impl Page {
 pub enum Message {
     ReadFile,
     WriteFile,
-    ChangeCloseMeleeAttackDistance(String),
-    SelectCloseMeleeAttack(NpcAttackInfo),
-    AddCloseMeleeAttack(NpcAttackInfo),
-    RemoveCloseMeleeAttack(usize),
-    ChangeMeleeAttackDistance(String),
-    SelectMeleeAttack(NpcAttackInfo),
-    AddMeleeAttack(NpcAttackInfo),
-    RemoveMeleeAttack(usize),
-    ChangeRangedAttackDistance(String),
-    SelectRangedAttack(NpcAttackInfo),
-    AddRangedAttack(NpcAttackInfo),
-    RemoveRangedAttack(usize),
+    SelectAttack(NpcAttackInfo),
+    AddAttack(NpcAttackInfo),
+    RemoveAttack(usize),
 }
 
 fn read_file() -> Option<NpcConstructor> {
@@ -85,62 +72,17 @@ impl Page {
                 self.data = load_by_id(self.id);
             }
             Message::WriteFile => save_by_id(&self.data, self.id),
-            Message::ChangeCloseMeleeAttackDistance(value) => {
-                let parsed = value.parse::<f32>().ok();
-                let Some(parsed) = parsed else {
-                    return;
-                };
-                self.data.close_melee_attack_distance = parsed;
+            Message::SelectAttack(attack) => {
+                self.selected_attack = Some(attack);
             }
-            Message::SelectCloseMeleeAttack(attack) => {
-                self.selected_close_melee_attack = Some(attack);
+            Message::AddAttack(attack) => {
+                self.data.attacks.push(attack);
             }
-            Message::AddCloseMeleeAttack(attack) => {
-                self.data.close_melee_attacks.push(attack);
-            }
-            Message::RemoveCloseMeleeAttack(index) => {
-                if index >= self.data.close_melee_attacks.len() {
+            Message::RemoveAttack(index) => {
+                if index >= self.data.attacks.len() {
                     return;
                 }
-                self.data.close_melee_attacks.remove(index);
-            }
-            Message::ChangeMeleeAttackDistance(value) => {
-                let parsed = value.parse::<f32>().ok();
-                let Some(parsed) = parsed else {
-                    return;
-                };
-                self.data.melee_attack_distance = parsed;
-            }
-            Message::SelectMeleeAttack(attack) => {
-                self.selected_melee_attack = Some(attack);
-            }
-            Message::AddMeleeAttack(attack) => {
-                self.data.melee_attacks.push(attack);
-            }
-            Message::RemoveMeleeAttack(index) => {
-                if index >= self.data.melee_attacks.len() {
-                    return;
-                }
-                self.data.melee_attacks.remove(index);
-            }
-            Message::ChangeRangedAttackDistance(value) => {
-                let parsed = value.parse::<f32>().ok();
-                let Some(parsed) = parsed else {
-                    return;
-                };
-                self.data.ranged_attack_distance = parsed;
-            }
-            Message::SelectRangedAttack(attack) => {
-                self.selected_ranged_attack = Some(attack);
-            }
-            Message::AddRangedAttack(attack) => {
-                self.data.ranged_attacks.push(attack);
-            }
-            Message::RemoveRangedAttack(index) => {
-                if index >= self.data.ranged_attacks.len() {
-                    return;
-                }
-                self.data.ranged_attacks.remove(index);
+                self.data.attacks.remove(index);
             }
         }
     }
@@ -153,118 +95,31 @@ impl Page {
         .align_x(Alignment::Center)
         .spacing(10);
 
-        let mut close_melee_attack_list = column![].align_x(Alignment::Center).spacing(10);
-        for (index, attack_id) in self.data.close_melee_attacks.iter().enumerate() {
+        let mut attack_list = column![].align_x(Alignment::Center).spacing(10);
+        for (index, attack_id) in self.data.attacks.iter().enumerate() {
             let attack_row = row![
                 text(format!("Attack id: {}", attack_id)),
-                button("delete").on_press(Message::RemoveCloseMeleeAttack(index)),
+                button("delete").on_press(Message::RemoveAttack(index)),
             ]
             .spacing(10);
-            close_melee_attack_list = close_melee_attack_list.push(attack_row);
+            attack_list = attack_list.push(attack_row);
         }
-        let message_add_close_melee_attack = self
-            .selected_close_melee_attack
-            .clone()
-            .map(Message::AddCloseMeleeAttack);
-        let add_close_melee_attack_row = row![
+        let message_add_attack = self.selected_attack.clone().map(Message::AddAttack);
+        let add_attack_row = row![
             pick_list(
                 &self.available_attack_list[..],
-                self.selected_close_melee_attack.clone(),
-                Message::SelectCloseMeleeAttack
+                self.selected_attack.clone(),
+                Message::SelectAttack
             ),
-            button("add").on_press_maybe(message_add_close_melee_attack),
-        ]
-        .spacing(10);
-
-        let mut melee_attack_list = column![].align_x(Alignment::Center).spacing(10);
-        for (index, attack_id) in self.data.melee_attacks.iter().enumerate() {
-            let attack_row = row![
-                text(format!("Attack id: {}", attack_id)),
-                button("delete").on_press(Message::RemoveMeleeAttack(index)),
-            ]
-            .spacing(10);
-            melee_attack_list = melee_attack_list.push(attack_row);
-        }
-        let message_add_melee_attack = self
-            .selected_melee_attack
-            .clone()
-            .map(Message::AddMeleeAttack);
-        let add_melee_attack_row = row![
-            pick_list(
-                &self.available_attack_list[..],
-                self.selected_melee_attack.clone(),
-                Message::SelectMeleeAttack
-            ),
-            button("add").on_press_maybe(message_add_melee_attack),
-        ]
-        .spacing(10);
-
-        let mut ranged_attack_list = column![].align_x(Alignment::Center).spacing(10);
-        for (index, attack_id) in self.data.ranged_attacks.iter().enumerate() {
-            let attack_row = row![
-                text(format!("Attack id: {}", attack_id)),
-                button("delete").on_press(Message::RemoveRangedAttack(index)),
-            ]
-            .spacing(10);
-            ranged_attack_list = ranged_attack_list.push(attack_row);
-        }
-        let message_add_ranged_attack = self
-            .selected_ranged_attack
-            .clone()
-            .map(Message::AddRangedAttack);
-        let add_ranged_attack_row = row![
-            pick_list(
-                &self.available_attack_list[..],
-                self.selected_ranged_attack.clone(),
-                Message::SelectRangedAttack
-            ),
-            button("add").on_press_maybe(message_add_ranged_attack),
+            button("add").on_press_maybe(message_add_attack),
         ]
         .spacing(10);
 
         let npc_details_column = column![
-            row![
-                text("Close melee attack distance"),
-                text_input(
-                    "Close melee attack distance",
-                    &format!("{}", self.data.close_melee_attack_distance)
-                )
-                .on_input(Message::ChangeCloseMeleeAttackDistance),
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
-            text("Add close melee attack:"),
-            add_close_melee_attack_row,
-            text("Close melee attacks:"),
-            close_melee_attack_list,
-            row![
-                text("Melee attack distance"),
-                text_input(
-                    "Melee attack distance",
-                    &format!("{}", self.data.melee_attack_distance)
-                )
-                .on_input(Message::ChangeMeleeAttackDistance),
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
-            text("Add melee attack:"),
-            add_melee_attack_row,
-            text("Melee attacks:"),
-            melee_attack_list,
-            row![
-                text("Ranged attack distance"),
-                text_input(
-                    "Ranged attack distance",
-                    &format!("{}", self.data.ranged_attack_distance)
-                )
-                .on_input(Message::ChangeRangedAttackDistance),
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
-            text("Add ranged attack:"),
-            add_ranged_attack_row,
-            text("Ranged attacks:"),
-            ranged_attack_list,
+            text("Add attack:"),
+            add_attack_row,
+            text("Attacks:"),
+            attack_list,
         ]
         .align_x(Alignment::Start)
         .spacing(10);

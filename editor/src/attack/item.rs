@@ -27,6 +27,7 @@ pub enum Message {
     ChangeTimeToComplete(String),
     ChangeAftercast(String),
     ChangeOrder(AttackOrder),
+    ChangeRange(String),
     ChangeKind(AttackKind),
 }
 
@@ -84,6 +85,13 @@ impl Page {
             Message::ChangeOrder(order) => {
                 self.data.order = order;
             }
+            Message::ChangeRange(value) => {
+                let parsed = value.parse::<f32>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.range = parsed;
+            }
             Message::ChangeKind(kind) => {
                 self.data.kind = kind;
             }
@@ -132,6 +140,13 @@ impl Page {
                     Message::ChangeOrder
                 )
                 .placeholder("Attack order"),
+            ]
+            .align_y(Alignment::Center)
+            .spacing(10),
+            row![
+                text("Range"),
+                text_input("Attack range", &format!("{}", self.data.range))
+                    .on_input(Message::ChangeRange),
             ]
             .align_y(Alignment::Center)
             .spacing(10),

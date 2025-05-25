@@ -5,15 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::attack::{AttackConstructor, RecoverInfo};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct NpcConstructor {
     pub name: String,
-    pub close_melee_attack_distance: f32,
-    pub close_melee_attacks: Vec<NpcAttackInfo>,
-    pub melee_attack_distance: f32,
-    pub melee_attacks: Vec<NpcAttackInfo>,
-    pub ranged_attack_distance: f32,
-    pub ranged_attacks: Vec<NpcAttackInfo>,
+    pub attacks: Vec<NpcAttackInfo>,
     pub hp: i32,
 }
 
@@ -38,32 +33,9 @@ impl NpcConstructor {
     }
 }
 
-impl Default for NpcConstructor {
-    fn default() -> Self {
-        NpcConstructor {
-            name: String::new(),
-            close_melee_attack_distance: 0.0,
-            close_melee_attacks: Vec::new(),
-            melee_attack_distance: 0.0,
-            melee_attacks: Vec::new(),
-            ranged_attack_distance: 0.0,
-            ranged_attacks: Vec::new(),
-            hp: 0,
-        }
-    }
-}
-
 pub struct NpcInfo {
     pub position: Point2<f32>,
-    close_melee_attack_index: u8,
-    pub close_melee_attack_distance: f32,
-    pub close_melee_attacks: Vec<AttackConstructor>,
-    melee_attack_index: u8,
-    pub melee_attack_distance: f32,
-    pub melee_attacks: Vec<AttackConstructor>,
-    ranged_attack_index: u8,
-    pub ranged_attack_distance: f32,
-    pub ranged_attacks: Vec<AttackConstructor>,
+    pub attacks: Vec<AttackConstructor>,
     // pub attacking: Option<AttackView>,
     recovering: Option<RecoverInfo>,
     pub hp: i32,
@@ -85,30 +57,11 @@ pub fn load_attacks(attack_info: Vec<NpcAttackInfo>) -> Vec<AttackConstructor> {
 
 impl NpcInfo {
     fn from_constructor(constructor: NpcConstructor, position: Point2<f32>) -> Self {
-        let NpcConstructor {
-            close_melee_attack_distance,
-            close_melee_attacks,
-            melee_attack_distance,
-            melee_attacks,
-            ranged_attack_distance,
-            ranged_attacks,
-            hp,
-            ..
-        } = constructor;
-        let close_melee_attacks = load_attacks(close_melee_attacks);
-        let melee_attacks = load_attacks(melee_attacks);
-        let ranged_attacks = load_attacks(ranged_attacks);
+        let NpcConstructor { attacks, hp, .. } = constructor;
+        let attacks = load_attacks(attacks);
         NpcInfo {
             position,
-            close_melee_attack_index: 0,
-            close_melee_attack_distance,
-            close_melee_attacks,
-            melee_attack_index: 0,
-            melee_attack_distance,
-            melee_attacks,
-            ranged_attack_index: 0,
-            ranged_attack_distance,
-            ranged_attacks,
+            attacks,
             // attacking: None,
             recovering: None,
             hp,

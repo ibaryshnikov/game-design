@@ -29,7 +29,7 @@ impl<'a> AttackView<'a> {
     }
     fn draw_selected_arc(&self, frame: &mut Frame) {
         let width_radian = self.width_radian();
-        let radius = self.attack_info.distance;
+        let radius = self.attack_info.range;
         let angle = self.attack_info.get_base_angle();
 
         let actor_position = self.attack_info.position;
@@ -53,7 +53,7 @@ impl<'a> AttackView<'a> {
         let path = Path::new(|b| {
             b.circle(
                 iced_core::Point::new(info.position.x, info.position.y),
-                info.distance,
+                info.range,
             );
         });
         frame.stroke(
