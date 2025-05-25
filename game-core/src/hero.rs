@@ -170,9 +170,10 @@ impl Hero {
             time_to_complete: 100,
             aftercast: 0,
             percent_completed: 0.0,
-            kind: AttackKind::CustomAngle(1.0),
+            kind: AttackKind::Pizza,
             order: AttackOrder::LeftToRight,
-            range: self.melee_attack_distance,
+            distance: self.melee_attack_distance,
+            width_angle: 1.0,
             state: AttackState::Selected,
             damage_done: false,
         };

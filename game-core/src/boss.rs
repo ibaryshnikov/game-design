@@ -76,7 +76,7 @@ impl Boss {
         match attack_info.order {
             AttackOrder::ProjectileFromCaster => {
                 if !attack_info.damage_done
-                    && check_hit(attack_info, attack_info.range, hero.position)
+                    && check_hit(attack_info, attack_info.distance, hero.position)
                 {
                     hero.receive_damage();
                     attack_info.damage_done = true;
@@ -87,7 +87,7 @@ impl Boss {
         if attack_info.completed() {
             if let AttackOrder::ProjectileFromCaster = attack_info.order {
                 // do nothing, we did check_hit above
-            } else if check_hit(attack_info, attack_info.range, hero.position) {
+            } else if check_hit(attack_info, attack_info.distance, hero.position) {
                 hero.receive_damage();
             }
             let recover_info = RecoverInfo {
@@ -106,7 +106,7 @@ impl Boss {
         let attacks: Vec<_> = self
             .attacks
             .iter()
-            .filter(|attack| attack.range > distance)
+            .filter(|attack| attack.range.in_range(distance))
             .collect();
         if attacks.is_empty() {
             return;
@@ -127,7 +127,7 @@ impl Boss {
                 AttackInfo::from_constructor(constructor, self.position, direction, 20.0)
             }
             _ => {
-                let range = constructor.range;
+                let range = constructor.range.to;
                 AttackInfo::from_constructor(constructor, self.position, direction, range)
             }
         };

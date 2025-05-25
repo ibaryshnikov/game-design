@@ -19,9 +19,7 @@ pub fn check_hit(
 ) -> bool {
     use AttackKind::*;
     match attack_info.kind {
-        Narrow | Wide | CustomAngle(_) => {
-            check_hit_arc(attack_info, attack_distance, target_position)
-        }
+        Pizza => check_hit_arc(attack_info, attack_distance, target_position),
         Circle => check_hit_circle(attack_info, attack_distance, target_position),
     }
 }

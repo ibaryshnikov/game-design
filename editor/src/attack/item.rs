@@ -1,4 +1,4 @@
-use iced::widget::{button, column, container, pick_list, row, text, text_input};
+use iced::widget::{button, column, container, pick_list, row, text, text_input, Row};
 use iced::{Alignment, Element};
 
 use shared::attack::{AttackConstructor, AttackKind, AttackOrder};
@@ -27,7 +27,9 @@ pub enum Message {
     ChangeTimeToComplete(String),
     ChangeAftercast(String),
     ChangeOrder(AttackOrder),
-    ChangeRange(String),
+    ChangeRangeFrom(String),
+    ChangeRangeTo(String),
+    ChangeWidthAngle(String),
     ChangeKind(AttackKind),
 }
 
@@ -85,12 +87,26 @@ impl Page {
             Message::ChangeOrder(order) => {
                 self.data.order = order;
             }
-            Message::ChangeRange(value) => {
+            Message::ChangeRangeFrom(value) => {
                 let parsed = value.parse::<f32>().ok();
                 let Some(parsed) = parsed else {
                     return;
                 };
-                self.data.range = parsed;
+                self.data.range.from = parsed;
+            }
+            Message::ChangeRangeTo(value) => {
+                let parsed = value.parse::<f32>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.range.to = parsed;
+            }
+            Message::ChangeWidthAngle(value) => {
+                let parsed = value.parse::<f32>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.width_angle = parsed;
             }
             Message::ChangeKind(kind) => {
                 self.data.kind = kind;
@@ -108,48 +124,48 @@ impl Page {
 
         let attack_details_column = column![
             row![text("Name:"), text(&self.data.name)].spacing(10),
-            row![
-                text("Delay"),
+            editor_row(
+                "Delay",
                 text_input("Attack delay", &format!("{}", self.data.delay))
                     .on_input(Message::ChangeDelay),
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
-            row![
-                text("Time to complete"),
+            ),
+            editor_row(
+                "Time to complete",
                 text_input(
                     "Attack time to complete",
                     &format!("{}", self.data.time_to_complete)
                 )
                 .on_input(Message::ChangeTimeToComplete),
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
-            row![
-                text("Aftercast"),
+            ),
+            editor_row(
+                "Aftercast",
                 text_input("Attack aftercast", &format!("{}", self.data.aftercast))
                     .on_input(Message::ChangeAftercast),
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
-            row![
-                text("Order"),
+            ),
+            editor_row(
+                "Order",
                 pick_list(
                     AttackOrder::options(),
                     Some(self.data.order.clone()),
                     Message::ChangeOrder
                 )
                 .placeholder("Attack order"),
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
-            row![
-                text("Range"),
-                text_input("Attack range", &format!("{}", self.data.range))
-                    .on_input(Message::ChangeRange),
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
+            ),
+            editor_row(
+                "Range from",
+                text_input("Attack range from", &format!("{}", self.data.range.from))
+                    .on_input(Message::ChangeRangeFrom),
+            ),
+            editor_row(
+                "Range to",
+                text_input("Attack range to", &format!("{}", self.data.range.to))
+                    .on_input(Message::ChangeRangeTo),
+            ),
+            editor_row(
+                "Width angle",
+                text_input("Attack width angle", &format!("{}", self.data.width_angle))
+                    .on_input(Message::ChangeWidthAngle),
+            ),
             row![
                 text("Kind"),
                 pick_list(
@@ -169,4 +185,10 @@ impl Page {
 
         contents.into()
     }
+}
+
+fn editor_row<'a, T: Into<Element<'a, Message>>>(label: &'a str, element: T) -> Row<'a, Message> {
+    row![text(label), element.into()]
+        .align_y(Alignment::Center)
+        .spacing(10)
 }

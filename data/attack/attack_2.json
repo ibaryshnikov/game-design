@@ -11,8 +11,9 @@
   "delay": 200,
   "time_to_complete": 600,
   "aftercast": 300,
-  "kind": "Wide",
+  "kind": "Pizza",
   "order": "CloseToFar",
-  "range": 150.0,
+  "range": {"from": 0, "to": 150.0},
+  "width_angle": 1.7,
   "state": "Selected"
 }
