@@ -419,16 +419,9 @@ impl AttackInfo {
         }
     }
     pub fn get_base_angle(&self) -> f32 {
-        let tan_a = self.direction.y / self.direction.x;
-        if !tan_a.is_finite() {
-            panic!(
-                "Direction is not defined in AttackInfo: x {}, y {}",
-                self.direction.x, self.direction.y
-            );
-        }
-        let mut angle = tan_a.atan();
-        if self.direction.x > 0.0 {
-            angle += std::f32::consts::PI;
+        let mut angle = self.direction.y.atan2(self.direction.x);
+        if angle < std::f32::consts::PI {
+            angle -= std::f32::consts::PI;
         }
         angle
     }
