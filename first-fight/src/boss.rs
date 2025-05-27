@@ -3,7 +3,7 @@ use iced_widget::canvas::{stroke, Frame, Path, Stroke};
 
 use game_core::boss::Boss;
 
-use crate::attack::AttackView;
+use crate::attack::{AttackView, ComplexAttackView};
 
 pub struct BossView {
     pub boss_info: Boss,
@@ -50,6 +50,10 @@ impl BossView {
     pub fn draw_attack(&self, frame: &mut Frame) {
         if let Some(attack_info) = &self.boss_info.attacking {
             let attack_view = AttackView::new(attack_info);
+            attack_view.draw(frame);
+        }
+        if let Some(attack) = &self.boss_info.attacking_complex {
+            let attack_view = ComplexAttackView::new(attack);
             attack_view.draw(frame);
         }
     }

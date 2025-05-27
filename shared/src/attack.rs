@@ -4,6 +4,457 @@ use std::time::Instant;
 use nalgebra::{Point2, Vector2};
 use serde::{Deserialize, Serialize};
 
+pub trait ReceiveDamage {
+    fn receive_damage(&mut self, value: u32);
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ComplexAttackConstructor {
+    pub range: AttackRange,
+    pub sequences: Vec<AttackSequenceConstructor>,
+}
+
+pub struct ComplexAttack {
+    pub started_at: Instant,
+    pub sequences: Vec<AttackSequence>,
+    pub attacker_position: Point2<f32>,
+    pub target_position: Point2<f32>,
+    pub direction_angle: f32,
+}
+
+impl ComplexAttack {
+    pub fn from_constructor(
+        constructor: ComplexAttackConstructor,
+        attacker_position: Point2<f32>,
+        target_position: Point2<f32>,
+        direction: Vector2<f32>,
+        direction_angle: f32,
+    ) -> Self {
+        let sequences = constructor
+            .sequences
+            .iter()
+            .map(|item| {
+                AttackSequence::from_constructor(
+                    item.clone(),
+                    attacker_position,
+                    target_position,
+                    direction,
+                    direction_angle,
+                )
+            })
+            .collect();
+        Self {
+            started_at: Instant::now(),
+            sequences,
+            attacker_position,
+            target_position,
+            direction_angle,
+        }
+    }
+    pub fn update(&mut self) {
+        for sequence in self.sequences.iter_mut() {
+            sequence.update();
+        }
+    }
+    pub fn completed(&self) -> bool {
+        self.sequences.iter().all(|item| item.completed())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AttackSequenceConstructor {
+    pub position_offset: Point2<f32>,
+    pub parts: Vec<AttackPartConstructor>,
+}
+
+pub struct AttackSequence {
+    pub started_at: Instant,
+    pub parts: Vec<AttackPart>,
+    pub index: usize,
+    // pub active_part: Option<AttackPart>,
+}
+
+impl AttackSequence {
+    pub fn from_constructor(
+        constructor: AttackSequenceConstructor,
+        attacker_position: Point2<f32>,
+        target_position: Point2<f32>,
+        direction: Vector2<f32>,
+        direction_angle: f32,
+    ) -> Self {
+        let parts = constructor
+            .parts
+            .iter()
+            .map(|item| {
+                AttackPart::from_constructor(
+                    item.clone(),
+                    attacker_position,
+                    target_position,
+                    constructor.position_offset,
+                    direction,
+                    direction_angle,
+                )
+            })
+            .collect();
+        Self {
+            started_at: Instant::now(),
+            parts,
+            index: 0,
+            // active_part: None,
+        }
+    }
+    pub fn active_part(&self) -> Option<&AttackPart> {
+        self.parts.get(self.index)
+    }
+    pub fn update(&mut self) {
+        if self.parts.is_empty() {
+            return;
+        }
+        self.update_with_index();
+    }
+    fn update_with_index(&mut self) {
+        if self.index >= self.parts.len() {
+            return;
+        }
+        if self.parts[self.index].completed() {
+            self.index += 1;
+            self.update_with_index();
+        } else {
+            self.parts[self.index].update();
+        }
+    }
+    pub fn completed(&self) -> bool {
+        // self.parts.iter().all(|item| item.completed())
+        // double increment paranoia
+        self.index >= self.parts.len()
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CircleConstructor {
+    pub radius: f32,
+    pub time_to_complete: u128,
+}
+
+pub struct Circle {
+    pub started_at: Instant,
+    pub time_to_complete: u128,
+    pub position: Point2<f32>,
+    pub direction: Vector2<f32>,
+    pub radius: f32,
+    pub percent_completed: f32,
+}
+
+impl Circle {
+    pub fn from_constructor(
+        constructor: CircleConstructor,
+        position: Point2<f32>,
+        direction: Vector2<f32>,
+    ) -> Self {
+        Self {
+            started_at: Instant::now(),
+            time_to_complete: constructor.time_to_complete,
+            position,
+            direction,
+            radius: constructor.radius,
+            percent_completed: 0.0,
+        }
+    }
+    pub fn update(&mut self) {
+        let time_passed = self.started_at.elapsed().as_millis();
+        // self.time_passed = time_passed;
+        let mut percent_completed = time_passed as f32 / self.time_to_complete as f32;
+        if percent_completed > 1.0 {
+            percent_completed = 1.0;
+        }
+        self.percent_completed = percent_completed;
+        self.position.x += self.direction.x * time_passed as f32 / 30.0;
+        self.position.y += self.direction.y * time_passed as f32 / 30.0;
+    }
+    pub fn intersects_with_circle(&self, center: Point2<f32>, radius: f32) -> bool {
+        let dx = self.position.x - center.x;
+        let dy = self.position.y - center.y;
+        let dd = (dx * dx + dy * dy).sqrt();
+        dd < self.radius + radius
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PizzaConstructor {
+    pub radius: f32,
+    pub width_angle: f32,
+    pub order: AttackOrder,
+}
+
+pub struct Pizza {
+    pub position: Point2<f32>,
+    pub radius: f32,
+    pub direction: Vector2<f32>,
+    pub width_angle: f32,
+    pub order: AttackOrder,
+    pub percent_completed: f32,
+}
+
+pub enum PizzaAnimationKind {
+    StartAngle,
+    EndAngle,
+    WidthAngle,
+}
+
+impl Pizza {
+    pub fn from_constructor(
+        constructor: PizzaConstructor,
+        position: Point2<f32>,
+        direction: Vector2<f32>,
+    ) -> Self {
+        let PizzaConstructor {
+            radius,
+            width_angle,
+            order,
+        } = constructor;
+        Self {
+            position,
+            radius,
+            direction,
+            width_angle,
+            order,
+            percent_completed: 0.0,
+        }
+    }
+    pub fn update(&mut self) {
+        // do nothing for now
+    }
+    pub fn intersects_with_circle(&self, center: Point2<f32>, radius: f32) -> bool {
+        let angle = self.get_base_angle();
+
+        let (start_angle, end_angle) = self.get_angles(angle, self.width_radian());
+
+        let point_a = self.position;
+        let point_b = Point2::new(
+            point_a.x + self.radius * start_angle.cos(),
+            point_a.y + self.radius * start_angle.sin(),
+        );
+        let point_c = Point2::new(
+            point_a.x + self.radius * end_angle.cos(),
+            point_a.y + self.radius * end_angle.sin(),
+        );
+
+        crate::check_points_with_circle(point_a, point_b, point_c, center, radius)
+    }
+    pub fn width_radian(&self) -> f32 {
+        let radian = self.width_angle;
+        if let AttackOrder::RightToLeft | AttackOrder::RightThenLeft = self.order {
+            -radian
+        } else {
+            radian
+        }
+    }
+    pub fn get_base_angle(&self) -> f32 {
+        self.direction.y.atan2(self.direction.x) + std::f32::consts::PI
+    }
+    pub fn get_angles(&self, angle: f32, width_radian: f32) -> (f32, f32) {
+        match self.order {
+            AttackOrder::CloseToFar => (angle - width_radian, angle + width_radian),
+            AttackOrder::LeftToRight | AttackOrder::RightToLeft => {
+                let start_angle = angle - width_radian;
+                let end_angle = start_angle + 2.0 * width_radian * self.percent_completed;
+                (start_angle, end_angle)
+            }
+            AttackOrder::CenterToSides => {
+                let width = width_radian * self.percent_completed;
+                (angle - width, angle + width)
+            }
+            AttackOrder::SidesToCenter => {
+                let start_angle = angle - width_radian;
+                let end_angle = start_angle + width_radian * self.percent_completed;
+                (start_angle, end_angle)
+            }
+            _ => (angle - width_radian, angle + width_radian),
+        }
+    }
+    pub fn get_radius(&self) -> f32 {
+        let percent_completed = self.percent_completed;
+        match self.order {
+            AttackOrder::CloseToFar => self.radius * percent_completed,
+            AttackOrder::LeftToRight => self.radius,
+            AttackOrder::RightToLeft => self.radius,
+            AttackOrder::SidesToCenter => self.radius,
+            AttackOrder::CenterToSides => self.radius,
+            AttackOrder::LeftThenRight => self.radius,
+            AttackOrder::RightThenLeft => self.radius,
+            AttackOrder::ExpandingCircle => self.radius * percent_completed,
+            AttackOrder::ProjectileFromCaster => self.radius,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum AttackShapeConstructor {
+    Circle(CircleConstructor),
+    Pizza(PizzaConstructor),
+    Ellipse,
+    Triangle,
+    Rectangle,
+    Hexagon,
+}
+
+pub enum AttackShape {
+    Circle(Circle),
+    Pizza(Pizza),
+    Ellipse,
+    Triangle,
+    Rectangle,
+    Hexagon,
+}
+
+impl AttackShape {
+    pub fn from_constructor(
+        constructor: AttackShapeConstructor,
+        attacker_position: Point2<f32>,
+        target_position: Point2<f32>,
+        position_offset: Point2<f32>,
+        direction: Vector2<f32>,
+    ) -> Self {
+        match constructor {
+            AttackShapeConstructor::Circle(circle) => {
+                let x = attacker_position.x + position_offset.x;
+                let y = attacker_position.y + position_offset.y;
+                let position = Point2::new(x, y);
+                AttackShape::Circle(Circle::from_constructor(circle, position, direction))
+            }
+            AttackShapeConstructor::Pizza(pizza) => {
+                AttackShape::Pizza(Pizza::from_constructor(pizza, attacker_position, direction))
+            }
+            AttackShapeConstructor::Ellipse => AttackShape::Ellipse,
+            AttackShapeConstructor::Triangle => AttackShape::Triangle,
+            AttackShapeConstructor::Rectangle => AttackShape::Rectangle,
+            AttackShapeConstructor::Hexagon => AttackShape::Hexagon,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AttackDamageConstructor {
+    pub value: u32,
+    pub instances: u32,
+    pub delay_between_instances: u32,
+}
+
+// #[derive(Debug)]
+pub struct AttackDamage {
+    pub value: u32,
+    pub instances: u32,
+    pub delay_between_instances: u32,
+    pub last_done: Option<Instant>,
+}
+
+impl AttackDamage {
+    pub fn from_constructor(constructor: AttackDamageConstructor) -> Self {
+        let AttackDamageConstructor {
+            value,
+            instances,
+            delay_between_instances,
+        } = constructor;
+        Self {
+            value,
+            instances,
+            delay_between_instances,
+            last_done: None,
+        }
+    }
+    pub fn has_instances(&self) -> bool {
+        self.instances > 0
+    }
+    pub fn do_damage<T: ReceiveDamage>(&mut self, target: &mut T) {
+        if !self.has_instances() {
+            return;
+        }
+        if let Some(last_done) = self.last_done {
+            if last_done.elapsed().as_millis() < self.delay_between_instances as u128 {
+                return;
+            }
+        }
+        target.receive_damage(self.value);
+        self.instances -= 1;
+        self.last_done = Some(Instant::now());
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AttackPartConstructor {
+    pub time_to_complete: u128,
+    pub shape: AttackShapeConstructor,
+    pub radius: f32,
+    pub damage: Option<AttackDamageConstructor>,
+}
+
+// #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AttackPart {
+    pub started_at: Instant,
+    pub time_to_complete: u128,
+    pub shape: AttackShape,
+    pub attacker_position: Point2<f32>,
+    pub target_position: Point2<f32>,
+    pub direction_angle: f32,
+    pub radius: f32,
+    pub damage: Option<AttackDamage>,
+}
+
+impl AttackPart {
+    pub fn from_constructor(
+        constructor: AttackPartConstructor,
+        attacker_position: Point2<f32>,
+        target_position: Point2<f32>,
+        position_offset: Point2<f32>,
+        direction: Vector2<f32>,
+        direction_angle: f32,
+    ) -> Self {
+        let AttackPartConstructor {
+            time_to_complete,
+            shape,
+            radius,
+            damage,
+        } = constructor;
+        let damage = damage.map(AttackDamage::from_constructor);
+        let shape = AttackShape::from_constructor(
+            shape,
+            attacker_position,
+            target_position,
+            position_offset,
+            direction,
+        );
+        Self {
+            started_at: Instant::now(),
+            time_to_complete,
+            shape,
+            attacker_position,
+            target_position,
+            direction_angle,
+            radius,
+            damage,
+        }
+    }
+    pub fn intersects_with_circle(&self, center: Point2<f32>, radius: f32) -> bool {
+        use AttackShape::*;
+        match &self.shape {
+            Circle(circle) => circle.intersects_with_circle(center, radius),
+            Pizza(pizza) => pizza.intersects_with_circle(center, radius),
+            _ => false, // not implemented yet
+        }
+    }
+    pub fn update(&mut self) {
+        use AttackShape::*;
+        match &mut self.shape {
+            Circle(circle) => circle.update(),
+            Pizza(pizza) => pizza.update(),
+            _ => (),
+        }
+    }
+    pub fn completed(&self) -> bool {
+        self.started_at.elapsed().as_millis() > self.time_to_complete
+    }
+}
+
 #[derive(Debug)]
 pub struct SelectionInfo {
     pub position: Point2<f32>,

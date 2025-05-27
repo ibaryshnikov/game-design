@@ -1,7 +1,57 @@
 use iced_core::Color;
 use iced_widget::canvas::{self, stroke, Frame, Path, Stroke};
 
-use shared::attack::{AttackInfo, AttackKind, AttackOrder, AttackState};
+use shared::attack::{
+    AttackInfo, AttackKind, AttackOrder, AttackSequence, AttackShape, AttackState, ComplexAttack,
+};
+
+pub struct ComplexAttackView<'a> {
+    pub complex_attack: &'a ComplexAttack,
+}
+
+impl<'a> ComplexAttackView<'a> {
+    pub fn new(complex_attack: &'a ComplexAttack) -> Self {
+        Self { complex_attack }
+    }
+    pub fn draw(&self, frame: &mut Frame) {
+        for sequence in self.complex_attack.sequences.iter() {
+            draw_sequence(frame, sequence);
+        }
+    }
+}
+
+fn draw_sequence(frame: &mut Frame, sequence: &AttackSequence) {
+    let Some(part) = &sequence.active_part() else {
+        return;
+    };
+    match &part.shape {
+        AttackShape::Circle(circle) => {
+            let path = Path::new(|b| {
+                b.circle(
+                    iced_core::Point::new(circle.position.x, circle.position.y),
+                    circle.radius,
+                );
+            });
+            frame.fill(&path, Color::from_rgb8(255, 0, 0));
+        }
+        AttackShape::Pizza(pizza) => {
+            let width_radian = pizza.width_radian();
+            let radius = pizza.get_radius();
+            let angle = pizza.get_base_angle();
+
+            let (start_angle, end_angle) = pizza.get_angles(angle, width_radian);
+            let start = iced_core::Point::new(pizza.position.x, pizza.position.y);
+            draw_circle_segment(frame, start, radius, start_angle, end_angle);
+
+            if let AttackOrder::SidesToCenter = pizza.order {
+                let end_angle = angle + width_radian;
+                let start_angle = end_angle - width_radian * pizza.percent_completed;
+                draw_circle_segment(frame, start, radius, start_angle, end_angle)
+            }
+        }
+        _ => (),
+    }
+}
 
 pub struct AttackView<'a> {
     pub attack_info: &'a AttackInfo,

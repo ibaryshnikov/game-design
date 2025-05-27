@@ -3,7 +3,7 @@ use std::fmt::{self, Display};
 use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 
-use crate::attack::{AttackConstructor, RecoverInfo};
+use crate::attack::{AttackConstructor, ComplexAttackConstructor, RecoverInfo};
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct NpcConstructor {
@@ -52,6 +52,20 @@ pub fn load_attacks(attack_info: Vec<NpcAttackInfo>) -> Vec<AttackConstructor> {
     attack_info
         .into_iter()
         .map(|item| load_attack_by_id(item.id))
+        .collect()
+}
+
+fn load_complex_attack_by_id(id: u32) -> ComplexAttackConstructor {
+    let file_path = format!("../data/attack/complex_attack_{id}.json");
+    let contents =
+        std::fs::read(file_path).expect("Should read ComplexAttackConstructor from a file");
+    serde_json::from_slice(&contents).expect("Should decode ComplexAttackConstructor")
+}
+
+pub fn load_complex_attacks(attack_info: Vec<NpcAttackInfo>) -> Vec<ComplexAttackConstructor> {
+    attack_info
+        .into_iter()
+        .map(|item| load_complex_attack_by_id(item.id))
         .collect()
 }
 
