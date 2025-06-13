@@ -2,10 +2,11 @@ use std::time::Instant;
 
 use nalgebra::{Point2, Vector2};
 
+use shared::action::Action;
 use shared::attack::{
     AttackConstructor, AttackDamageConstructor, AttackInfo, AttackOrder, AttackPartConstructor,
-    AttackRange, AttackSequenceConstructor, AttackShape, AttackShapeConstructor, Circle,
-    CircleConstructor, ComplexAttack, ComplexAttackConstructor, RecoverInfo,
+    AttackRange, AttackSequenceConstructor, AttackShapeConstructor, CircleConstructor,
+    ComplexAttack, ComplexAttackConstructor, RecoverInfo,
 };
 use shared::character::Character;
 use shared::check_hit;
@@ -21,6 +22,7 @@ pub struct Boss {
     recovering: Option<RecoverInfo>,
     attacks_complex: Vec<ComplexAttackConstructor>,
     pub attacking_complex: Option<ComplexAttack>,
+    pub action: Option<Action>,
     pub hp: i32,
     max_hp: i32,
 }
@@ -86,6 +88,7 @@ impl Boss {
             recovering: None,
             attacks_complex: Vec::new(),
             attacking_complex: None,
+            action: None,
             hp: 300,
             max_hp: 300,
         }
@@ -102,6 +105,7 @@ impl Boss {
             recovering: None,
             attacks_complex,
             attacking_complex: None,
+            action: None,
             hp: 300,
             max_hp: 300,
         }

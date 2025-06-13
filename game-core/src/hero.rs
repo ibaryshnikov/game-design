@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use nalgebra::{Point2, Vector2};
 
+use shared::action::Action;
 use shared::attack::{
     AttackInfo, AttackKind, AttackOrder, AttackState, RecoverInfo, SelectionInfo,
 };
@@ -28,6 +29,7 @@ pub struct Hero {
     pub recovering: Option<RecoverInfo>,
     pub dashing: Option<DashInfo>,
     dash_cooldown: Option<DashCooldown>,
+    pub action: Option<Action>,
     character_settings: CharacterSettings,
 }
 
@@ -69,6 +71,7 @@ impl Hero {
             recovering: None,
             dashing: None,
             dash_cooldown: None,
+            action: None,
             character_settings: load_character_settings_by_id(1),
         }
     }

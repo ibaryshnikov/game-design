@@ -1,12 +1,15 @@
 use nalgebra::Point2;
 
+pub mod action;
 pub mod attack;
 pub mod character;
+pub mod effect;
 pub mod hero;
 pub mod level;
 pub mod list;
 pub mod npc;
 pub mod position;
+pub mod projectile;
 pub mod server;
 pub mod types;
 
@@ -42,8 +45,17 @@ pub fn check_hit_arc(
 ) -> bool {
     let angle = attack_info.get_base_angle();
 
+    let dx = attack_info.position.x - target_position.x;
+    let dy = attack_info.position.y - target_position.y;
+    let direction_angle = dy.atan2(dx) + std::f32::consts::PI;
+
     let width_radian = attack_info.width_radian();
     let (start_angle, end_angle) = attack_info.get_angles(angle, width_radian);
+
+    if direction_angle > start_angle && direction_angle < end_angle {
+        let dd = (dx * dx + dy * dy).sqrt();
+        return dd < attack_distance + 20.0;
+    }
 
     let point_a = attack_info.position;
     let point_b = Point2::new(
@@ -67,76 +79,60 @@ fn check_points_with_circle(
     center: Point2<f32>,
     radius: f32,
 ) -> bool {
-    let line_ab = line_from_points(point_a, point_b);
-    if circle_intersects_line(line_ab, center, radius) {
+    circle_intersects_line_segment(point_a, point_b, center, radius)
+        || circle_intersects_line_segment(point_a, point_c, center, radius)
+}
+
+// line equation:
+// x = x1 - tx2, t is [0, 1]
+// y = y1 - ty2, t is [0, 1]
+//
+// circle equation:
+// (x - a)^2 + (y - b)^2 = R^2
+//
+// combine together:
+// (t(x2 - x1) + x1 - a)^2 + (t(y2 - y1) + y1 - b)^2 = R^2
+// let p = x2 - x1
+//     q = x1 - a
+//     k = y2 - y1
+//     l = y1 - b
+// then
+// (p^2 + k^2)t^2 + (2pq + 2kl)t + q^2 +l^2-R^2 = 0
+// let a = p^2 + k^2
+//     b = 2pq + 2kl
+//     c = q^2 + l^2 - R^2
+// then
+// at^2 + bt + c = 0
+fn circle_intersects_line_segment(
+    start: Point2<f32>,
+    end: Point2<f32>,
+    center: Point2<f32>,
+    radius: f32,
+) -> bool {
+    let p = end.x - start.x;
+    let q = start.x - center.x;
+    let k = end.y - start.y;
+    let l = start.y - center.y;
+    let a = p * p + k * k;
+    let b = 2.0 * p * q + 2.0 * k * l;
+    let c = q * q + l * l - radius * radius;
+    let d = b * b - 4.0 * a * c;
+    // no solutions
+    if d < 0.0 {
+        return false;
+    }
+    let range = 0.0..=1.0;
+    // single solution
+    if d == 0.0 {
+        let t = -b / (2.0 * a);
+        return range.contains(&t);
+        // return t >= 0.0 && t <= 1.0;
+    }
+    // two solutions
+    let t1 = (-b + d.sqrt()) / (2.0 * a);
+    if range.contains(&t1) {
         return true;
     }
-    let line_ac = line_from_points(point_a, point_c);
-    if circle_intersects_line(line_ac, center, radius) {
-        return true;
-    }
-    let line_bc = line_from_points(point_b, point_c);
-    circle_intersects_line(line_bc, center, radius)
-}
-
-fn circle_intersects_line((a, b, c): (f32, f32, f32), center: Point2<f32>, radius: f32) -> bool {
-    let distance = distance_from_line_to_point(a, b, c, center.x, center.y);
-    distance < radius
-}
-
-fn distance_from_line_to_point(a: f32, b: f32, c: f32, x: f32, y: f32) -> f32 {
-    (a * x + b * y + c).abs() / (a * a + b * b).sqrt()
-}
-
-fn line_from_points(point_1: Point2<f32>, point_2: Point2<f32>) -> (f32, f32, f32) {
-    find_line(point_1.x, point_1.y, point_2.x, point_2.y)
-}
-
-// We need the following equation: ax + by + c = 0
-// (y - y1) / (y2 - y1) = (x - x1) / (x2 - x1)
-// (y - y1) * (x2 - x1) = (x - x1) * (y2 - y1)
-// (x2 - x1) * y - (x2 - x1) * y1 = (y2 - y1) * x - (y2 - y1) * x1
-// (y2 - y1) * x - (x2 - x1) * y - (y2 - y1) * x1 + (x2 - x1) * y1 = 0
-// a = y2 - y1
-// b = x1 - x2
-// c = (x2 - x1) * y1 - (y2 - y1) * x1
-// c = x2 * y1 - y2 * x1
-fn find_line(x1: f32, y1: f32, x2: f32, y2: f32) -> (f32, f32, f32) {
-    let a = y2 - y1;
-    let b = x1 - x2;
-    let c = x2 * y1 - y2 * x1;
-    (a, b, c)
-}
-
-// some tests for lines and distances
-
-// Checking the triangle with A: Point { x: 512.0, y: 384.0 }, B: Point { x: 362.60272, y: 370.567 }, C: Point { x: 379.62704, y: 313.4493 }
-// Circle is: Point { x: 402.8994, y: 376.09946 } 20
-
-#[test]
-fn circle_intersects_one_side_of_a_triangle() {
-    let point_a = Point2::new(512.0, 384.0);
-    let point_b = Point2::new(362.60272, 370.567);
-    let point_c = Point2::new(379.62704, 313.4493);
-    let center = Point2::new(402.8994, 376.09946);
-    let radius = 20.0;
-    let line_ab = line_from_points(point_a, point_b);
-    let (a, b, c) = line_ab;
-    let sum = point_a.x * a + point_a.y * b + c;
-    assert!(sum < 0.1, "Check line equation, sum should be around 0");
-    let intersection = circle_intersects_line(line_ab, center, radius);
-    assert!(intersection, "Circle intersects the line");
-    let result = check_points_with_circle(point_a, point_b, point_c, center, radius);
-    assert!(result, "Circle intersects or inside the triangle");
-}
-
-#[test]
-fn circle_doesnt_intersect_the_triangle() {
-    let point_a = Point2::new(512.0, 384.0);
-    let point_b = Point2::new(362.60272, 370.567);
-    let point_c = Point2::new(379.62704, 313.4493);
-    let center = Point2::new(500.0, 500.0);
-    let radius = 20.0;
-    let result = check_points_with_circle(point_a, point_b, point_c, center, radius);
-    assert_eq!(result, false, "Circle doesn't the triangle");
+    let t2 = (-b - d.sqrt()) / (2.0 * a);
+    range.contains(&t2)
 }
