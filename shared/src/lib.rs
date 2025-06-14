@@ -84,8 +84,8 @@ fn check_points_with_circle(
 }
 
 // line equation:
-// x = x1 - tx2, t is [0, 1]
-// y = y1 - ty2, t is [0, 1]
+// x = x1 + t(x2 - x1), t ∈ [0, 1]
+// y = y1 + t(y2 - y1), t ∈ [0, 1]
 //
 // circle equation:
 // (x - a)^2 + (y - b)^2 = R^2
