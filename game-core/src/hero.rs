@@ -1,6 +1,7 @@
 use nalgebra::{Point2, Vector2};
-use serde::{Deserialize, Serialize};
 
+use network::client::{KeyActionKind, Move};
+use network::server;
 use shared::action::Action;
 use shared::attack::{
     AttackInfo, AttackKind, AttackOrder, AttackState, RecoverInfo, SelectionInfo,
@@ -8,11 +9,10 @@ use shared::attack::{
 use shared::character::{Character, CharacterSettings};
 use shared::check_hit;
 use shared::hero::{DashCooldown, DashInfo, Moving};
-use shared::types::{KeyActionKind, Move};
 
 use crate::boss::Boss;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Hero {
     pub id: String,
     pub hp: i32,
@@ -72,6 +72,61 @@ impl Hero {
             action: None,
             character_settings: load_character_settings_by_id(1),
         }
+    }
+    pub fn to_network(&self) -> server::Hero {
+        server::Hero {
+            id: self.id.clone(),
+            hp: self.hp,
+            max_hp: self.max_hp,
+            position: self.position,
+            direction: self.direction,
+            moving: self.moving.clone(),
+            melee_attack_distance: self.melee_attack_distance,
+            ranged_attack_distance: self.ranged_attack_distance,
+            selected: self.selected.clone(),
+            attacking: self.attacking.clone(),
+            recovering: self.recovering.clone(),
+            dashing: self.dashing.clone(),
+            dash_cooldown: self.dash_cooldown.clone(),
+            action: self.action.clone(),
+            character_settings: self.character_settings.clone(),
+        }
+    }
+    pub fn from_network(hero: server::Hero) -> Self {
+        Self {
+            id: hero.id.clone(),
+            hp: hero.hp,
+            max_hp: hero.max_hp,
+            position: hero.position,
+            direction: hero.direction,
+            moving: hero.moving.clone(),
+            last_key_up: None,
+            melee_attack_distance: hero.melee_attack_distance,
+            ranged_attack_distance: hero.ranged_attack_distance,
+            selected: hero.selected.clone(),
+            attacking: hero.attacking.clone(),
+            recovering: hero.recovering.clone(),
+            dashing: hero.dashing.clone(),
+            dash_cooldown: hero.dash_cooldown.clone(),
+            action: hero.action.clone(),
+            character_settings: hero.character_settings.clone(),
+        }
+    }
+    pub fn update_from_network(&mut self, hero: server::Hero) {
+        self.hp = hero.hp;
+        self.max_hp = hero.max_hp;
+        self.position = hero.position;
+        self.direction = hero.direction;
+        self.moving = hero.moving.clone();
+        self.melee_attack_distance = hero.melee_attack_distance;
+        self.ranged_attack_distance = hero.ranged_attack_distance;
+        self.selected = hero.selected;
+        self.attacking = hero.attacking;
+        self.recovering = hero.recovering;
+        self.dashing = hero.dashing;
+        self.dash_cooldown = hero.dash_cooldown;
+        self.action = hero.action;
+        self.character_settings = hero.character_settings;
     }
     pub fn reset(&mut self) {
         self.hp = self.max_hp;

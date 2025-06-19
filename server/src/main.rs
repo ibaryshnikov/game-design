@@ -13,7 +13,7 @@ use tower_http::cors::CorsLayer;
 // use tower_http::validate_request::ValidateRequestHeaderLayer;
 use uuid::Uuid;
 
-use shared::types::{KeyActionKind, Message as ServerMessage, Move};
+use network::client;
 
 mod broadcaster;
 mod game_loop;
@@ -108,10 +108,10 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
             match message {
                 Message::Text(text) => println!("Got text message: {}", text),
                 Message::Binary(data) => {
-                    let message = ServerMessage::from_slice(&data);
+                    let message = client::Message::from_slice(&data);
                     println!("Got binary message: {:?}", message);
                     let result = sender
-                        .send(LoopMessage::Server(id, Box::new(message)))
+                        .send(LoopMessage::Client(id, Box::new(message)))
                         .await;
                     if let Err(e) = result {
                         println!("Error sending message: {:?}", e);

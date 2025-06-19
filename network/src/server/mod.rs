@@ -1,35 +1,45 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 pub mod boss;
 pub mod hero;
 
-use boss::Boss;
-use hero::Hero;
+pub use boss::Boss;
+pub use hero::Hero;
 
 // Updates to all npc on the current scene
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NpcListUpdate {
     data: Vec<Boss>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CharacterUpdate {
     id: u128,
     data: Hero,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Scene {
+    pub characters: HashMap<u128, Hero>,
+    pub npc: Vec<Boss>,
+}
+
 // It's used to send server updates, no need for extra Box
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Update {
+    Scene(Scene), // update the whole scene
     Character(CharacterUpdate),
     NpcList(NpcListUpdate),
     Projectile, // some updates related to projectiles
     Entity,     // some updates related to entities
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Message {
+    Test,
     Update(Update),
 }
 

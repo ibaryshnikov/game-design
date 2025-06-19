@@ -13,9 +13,10 @@ use winit::event_loop::EventLoopProxy;
 use game_core::boss::Boss;
 use game_core::hero::Hero;
 use game_core::scene::Scene;
+use network::client::{KeyActionKind, Move};
+use network::server;
 use shared::level::{Level, LevelInfo, LevelList};
 use shared::npc::NpcConstructor;
-use shared::types::{KeyActionKind, Move};
 
 use crate::hero::HeroView;
 use crate::scene::SceneView;
@@ -30,8 +31,9 @@ pub enum Message {
     WsConnected,
     WsDisconnected,
     WsMessage(String),
+    UpdateScene(server::Scene),
     ServerAction(ServerAction),
-    ServerMessage(game_core::server::ServerMessage),
+    ServerMessage(Box<server::Message>),
     Tick,
     SwitchToLevelSelect,
     Start(u32),
@@ -87,9 +89,10 @@ impl UiApp {
     pub fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
         let level_list = load_level_list();
         let boss_constructor = load_npc_by_id(1);
-        let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
+        // let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
         let hero = Hero::new(Point2::new(250.0, 200.0));
-        let scene = Scene::new(hero.clone(), boss);
+        let scene = Scene::empty();
+        // let scene = Scene::new(hero.clone(), boss);
         UiApp {
             last_update: Instant::now(),
             proxy,
@@ -131,11 +134,14 @@ impl UiApp {
             Message::WsDisconnected => {
                 // do something here too
             }
+            Message::UpdateScene(scene) => {
+                self.scene.update_from_network(scene);
+            }
             Message::ServerAction(_action) => {
                 // do nothing for now
             }
             Message::ServerMessage(m) => {
-                self.scene.handle_server_message(m);
+                self.scene.handle_server_message(*m);
             }
             Message::WsMessage(text) => {
                 println!("Got ws message: {}", text);
@@ -165,13 +171,13 @@ impl UiApp {
                 self.last_update = now;
                 self.hero.update_visuals(dt);
                 self.scene.update(dt);
-                if self.scene.characters.values().all(|hero| hero.defeated()) {
-                    self.state = FightState::Loss;
-                    self.scene.stop();
-                } else if self.scene.npc.iter().all(|boss| boss.defeated()) {
-                    self.state = FightState::Win;
-                    self.scene.stop();
-                }
+                // if self.scene.characters.values().all(|hero| hero.defeated()) {
+                //     self.state = FightState::Loss;
+                //     self.scene.stop();
+                // } else if self.scene.npc.iter().all(|boss| boss.defeated()) {
+                //     self.state = FightState::Win;
+                //     self.scene.stop();
+                // }
             }
             Message::SwitchToLevelSelect => {
                 self.state = FightState::LevelSelect;
@@ -192,7 +198,7 @@ impl UiApp {
                 self.scene.reset();
                 self.state = FightState::Action;
             }
-            _ => (),
+            Message::None => (), // do nothing
         }
     }
 

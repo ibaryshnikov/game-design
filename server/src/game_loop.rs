@@ -5,8 +5,8 @@ use axum::extract::ws::Message as WsMessage;
 use tokio::sync::mpsc;
 use tokio::time;
 
-use game_core::server::ServerMessage;
-use shared::types::Message;
+use network::client;
+use network::server;
 
 use crate::broadcaster;
 use crate::stage::Stage;
@@ -29,8 +29,8 @@ pub async fn game_loop(mut receiver: GameLoopReceiver) {
                                 tracing::error!("Failed to send message to broadcaster in game loop: {e}");
                             }
                         }
-                        LoopMessage::Server(id, message) => {
-                            handle_message(id, *message, &broadcaster_sender).await;
+                        LoopMessage::Client(id, message) => {
+                            handle_client_message(&mut stage, id, *message, &broadcaster_sender).await;
                         }
                         LoopMessage::LocalMessage(id, message) => {
                             handle_local_message(&mut stage, id, *message, &broadcaster_sender).await;
@@ -40,35 +40,33 @@ pub async fn game_loop(mut receiver: GameLoopReceiver) {
                     panic!("Receiver is empty, game loop channel is closed");
                 }
             }
-            _ = time::sleep(Duration::from_millis(10)) => {
-
+            _ = timer() => {
+                stage.update();
             }
         }
     }
 }
 
-async fn timer() {}
+async fn timer() {
+    tokio::time::sleep(Duration::from_millis(10)).await;
+}
 
-async fn handle_message(
+async fn handle_client_message(
+    stage: &mut Stage,
     id: u128,
-    message: Message,
+    message: client::Message,
     broadcaster: &mpsc::Sender<broadcaster::Message>,
 ) {
     println!("Handle message in game loop for {id}");
-    match message {
-        Message::Join => {
-            let m = ServerMessage::Test;
-            let data = serde_json::to_vec(&m).expect("Should encode ServerMessage");
-            let ws_message = WsMessage::Binary(Bytes::from(data));
-            let new_message = broadcaster::Message::SendMessage(id, ws_message);
-            if let Err(e) = broadcaster.send(new_message).await {
-                tracing::error!("Failed to send message to broadcaster in game loop: {e}");
-            }
-        }
-        Message::Move(kind, action) => {}
-        Message::HeroDash => {}
-        Message::HeroAttack => {}
-        Message::Hero(hero) => {}
+    stage.scene.handle_client_message(id, message);
+    let scene = stage.scene.to_network();
+    println!("network scene characters len {}", scene.characters.len());
+    let server_message = server::Message::Update(server::Update::Scene(scene));
+    let data = server_message.to_vec();
+    let ws_message = WsMessage::Binary(Bytes::from(data));
+    let new_message = broadcaster::Message::SendMessageToAll(ws_message);
+    if let Err(e) = broadcaster.send(new_message).await {
+        println!("Failed to send message to broadcaster in game loop handle_client_message: {e}");
     }
 }
 
@@ -82,16 +80,14 @@ async fn handle_local_message(
     match message {
         LocalMessage::Join => {
             println!("Got LocalMessage::Join");
-            let scene = game_core::server::Scene {
-                characters: stage.characters.clone(),
-                npc: stage.npc.clone(),
-            };
-            let m = ServerMessage::Scene(scene);
-            let data = rmp_serde::to_vec(&m).expect("Should encode ServerMessage");
+            stage.scene.add_character(id);
+            let scene = stage.scene.to_network();
+            let server_message = server::Message::Update(server::Update::Scene(scene));
+            let data = server_message.to_vec();
             let ws_message = WsMessage::Binary(Bytes::from(data));
-            let new_message = broadcaster::Message::SendMessage(id, ws_message);
+            let new_message = broadcaster::Message::SendMessageToAll(ws_message);
             if let Err(e) = broadcaster.send(new_message).await {
-                tracing::error!("Failed to send message to broadcaster in game loop: {e}");
+                println!("Failed to send message to broadcaster in game loop handle_local_message: {e}");
             }
         }
     }

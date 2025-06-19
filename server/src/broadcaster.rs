@@ -13,6 +13,7 @@ pub enum Message {
     CloseConnection(u128),
     SendMessage(u128, WsMessage),
     SendMessageList(Vec<u128>, WsMessage),
+    SendMessageToAll(WsMessage),
 }
 
 pub async fn start(mut receiver: Receiver<Message>) {
@@ -28,6 +29,7 @@ async fn handle_message(writers: &mut HashMap<u128, Writer>, message: Message) {
     use Message::*;
     match message {
         AddWriter(id, writer) => {
+            println!("Adding writer for {id}");
             if let Some(_old) = writers.insert(id, writer) {
                 tracing::warn!("Replaced websocket writer in broadcaster!");
             }
@@ -44,6 +46,14 @@ async fn handle_message(writers: &mut HashMap<u128, Writer>, message: Message) {
         SendMessageList(id_list, message) => {
             for id in id_list.into_iter() {
                 send_message(id, writers, message.clone()).await;
+            }
+        }
+        SendMessageToAll(message) => {
+            for (id, writer) in writers.iter_mut() {
+                println!("Sending message in broadcaster to {id}");
+                if let Err(e) = writer.send(message.clone()).await {
+                    tracing::error!("Failed to send WebSocket message to id {id}: {e}");
+                }
             }
         }
     }

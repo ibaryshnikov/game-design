@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use nalgebra::{Point2, Vector2};
-use serde::{Deserialize, Serialize};
 
+use network::server;
 use shared::action::Action;
 use shared::attack::{
     AttackConstructor, AttackDamageConstructor, AttackInfo, AttackOrder, AttackPartConstructor,
@@ -16,7 +16,6 @@ use shared::position::{direction_from, distance_between};
 
 use crate::hero::Hero;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Boss {
     pub position: Point2<f32>,
     attacks: Vec<AttackConstructor>,
@@ -112,6 +111,17 @@ impl Boss {
             max_hp: 300,
         }
     }
+    pub fn to_network(&self) -> server::Boss {
+        server::Boss {
+            position: self.position,
+            attacking: self.attacking.clone(),
+            recovering: self.recovering.clone(),
+            attacking_complex: self.attacking_complex.clone(),
+            action: self.action.clone(),
+            hp: self.hp,
+            max_hp: self.max_hp,
+        }
+    }
     pub fn reset(&mut self) {
         self.hp = self.max_hp;
     }
@@ -140,6 +150,7 @@ impl Boss {
             return;
         };
         attack_info.update(dt);
+        #[allow(clippy::single_match)] // will be extended later probably
         match attack_info.order {
             AttackOrder::ProjectileFromCaster => {
                 if !attack_info.damage_done {

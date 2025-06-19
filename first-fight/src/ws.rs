@@ -8,11 +8,15 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
 use tungstenite::{Error as WsError, Message as WsMessage};
+use futures_util::stream::SplitSink;
 
-use shared::types::{KeyActionKind, Message as SharedMessage, Move};
+use network::client::{self, KeyActionKind, Move};
+use network::server;
 
 use crate::ui_app::Message;
 use crate::UserEvent;
+
+type Writer = SplitSink<WebSocket, WsMessage>;
 
 #[derive(Debug, Clone)]
 pub enum LocalMessage {
@@ -65,7 +69,7 @@ const SERVER: &str = "ws://127.0.0.1:8080/ws";
 
 pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
     let (sender, mut receiver) = mpsc::channel(100);
-    if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsChannel(sender))) {
+    if let Err(e) = proxy.send_event(UserEvent::Message(Box::new(Message::WsChannel(sender)))) {
         println!("Error sending Message in ws: {}", e);
     }
 
@@ -75,25 +79,31 @@ pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
         Ok((ws, _)) => {
             websocket = ws;
             println!("WebSocket connected");
-            if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsConnected)) {
+            if let Err(e) = proxy.send_event(UserEvent::Message(Box::new(Message::WsConnected))) {
                 println!("Error sending Message in ws: {}", e);
             }
         }
         Err(e) => {
             println!("Error connecting to WebSocket: {}", e);
-            if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsDisconnected)) {
+            if let Err(e) = proxy.send_event(UserEvent::Message(Box::new(Message::WsDisconnected)))
+            {
                 tracing::error!("Error sending Message in ws: {}", e);
             }
             return;
         }
     }
 
+    // let (mut write, mut read) = socket.split();
+    // let mut maybe_ws_future = Option<Box::pin(websocket.next())>;
+    // let mut maybe_receiver_future = Option<Box::pin(receiver.recv())>;
+
     loop {
+
         tokio::select! {
             maybe_message = websocket.next() => {
                 match maybe_message {
                     Some(Ok(message)) => {
-                        println!("Gow websocket message: {:?}", message);
+                        println!("Gow websocket message");
                         handle_ws_message(&proxy, message).await;
                     }
                     Some(Err(e)) => {
@@ -101,7 +111,7 @@ pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
                     }
                     None => {
                         println!("WebSocket closed by the server");
-                        if let Err(e) = proxy.send_event(UserEvent::Message(Message::WsDisconnected)) {
+                        if let Err(e) = proxy.send_event(UserEvent::Message(Box::new(Message::WsDisconnected))) {
                             tracing::error!("Error sending Message in ws: {}", e);
                         }
                         break;
@@ -121,13 +131,19 @@ pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
     }
 }
 
+// async fn ws_reader_loop<R>(reader: R, proxy: EventLoopProxy<UserEvent>)
+// where
+//     R: {
+//
+// }
+
 type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 async fn handle_local_message(websocket: &mut WebSocket, message: LocalMessage) {
     match message {
         LocalMessage::Move(kind, movement) => {
             println!("Local message Move kind {:?}: {:?}", kind, movement);
-            let message = SharedMessage::Move(kind, movement);
+            let message = client::Message::Move(kind, movement);
             let bytes = Bytes::from(message.to_vec());
             let ws_message = WsMessage::Binary(bytes);
             if let Err(e) = websocket.send(ws_message).await {
@@ -136,7 +152,7 @@ async fn handle_local_message(websocket: &mut WebSocket, message: LocalMessage) 
         }
         LocalMessage::HeroDash => {
             println!("Local message HeroDash");
-            let message = SharedMessage::HeroDash;
+            let message = client::Message::HeroDash;
             let bytes = Bytes::from(message.to_vec());
             let ws_message = WsMessage::Binary(bytes);
             if let Err(e) = websocket.send(ws_message).await {
@@ -145,7 +161,7 @@ async fn handle_local_message(websocket: &mut WebSocket, message: LocalMessage) 
         }
         LocalMessage::HeroAttack => {
             println!("Local message HeroAttack");
-            let message = SharedMessage::HeroAttack;
+            let message = client::Message::HeroAttack;
             let bytes = Bytes::from(message.to_vec());
             let ws_message = WsMessage::Binary(bytes);
             if let Err(e) = websocket.send(ws_message).await {
@@ -156,25 +172,47 @@ async fn handle_local_message(websocket: &mut WebSocket, message: LocalMessage) 
     }
 }
 
-async fn handle_ws_message(_proxy: &EventLoopProxy<UserEvent>, message: WsMessage) {
+async fn handle_ws_message(proxy: &EventLoopProxy<UserEvent>, message: WsMessage) {
     match message {
         WsMessage::Text(text) => {
             println!("Got text message: {}", text);
         }
         WsMessage::Binary(data) => {
-            use game_core::server::ServerMessage;
-            println!("Got binary data: {:?}", data);
-            let m = ServerMessage::from_slice(&data);
+            println!("Got binary data");
+            let m = server::Message::from_slice(&data);
             match m {
-                ServerMessage::Test => {}
-                ServerMessage::Scene(scene) => {
-                    println!("Got Scene from server, npc.len(): {:?}", scene.npc.len());
+                server::Message::Test => {
+                    println!("Got server::Message::Test");
+                }
+                server::Message::Update(update) => {
+                    println!("Got Update from server");
+                    match update {
+                        server::Update::Scene(scene) => {
+                            println!("Got Scene update from server");
+                            let event = UserEvent::Message(Box::new(Message::UpdateScene(scene)));
+                            let _ = proxy.send_event(event);
+                        }
+                        other => {
+                            println!("Some other update: {:?}", other);
+                        }
+                    }
                 }
             }
         }
         other => {
             println!("Got other message: {:?}", other);
         }
+    }
+}
+
+async fn send_client_message<S>(write_half: &mut S, message: client::Message)
+where
+    S: Sink<WsMessage, Error = WsError> + Unpin,
+{
+    let data = message.to_vec();
+    let ws_message = WsMessage::Binary(Bytes::from(data));
+    if let Err(e) = write_half.send(ws_message).await {
+        println!("Error sending WsMessage: {:?}", e);
     }
 }
 
@@ -186,30 +224,18 @@ where
         match message {
             LocalMessage::Move(kind, movement) => {
                 println!("Local message Move kind {:?}: {:?}", kind, movement);
-                let message = SharedMessage::Move(kind, movement);
-                let bytes = Bytes::from(message.to_vec());
-                let ws_message = WsMessage::Binary(bytes);
-                if let Err(e) = write_half.send(ws_message).await {
-                    println!("Error sending WsMessage: {:?}", e);
-                }
+                let client_message = client::Message::Move(kind, movement);
+                send_client_message(&mut write_half, client_message).await;
             }
             LocalMessage::HeroDash => {
                 println!("Local message HeroDash");
-                let message = SharedMessage::HeroDash;
-                let bytes = Bytes::from(message.to_vec());
-                let ws_message = WsMessage::Binary(bytes);
-                if let Err(e) = write_half.send(ws_message).await {
-                    println!("Error sending WsMessage: {:?}", e);
-                }
+                let client_message = client::Message::HeroDash;
+                send_client_message(&mut write_half, client_message).await;
             }
             LocalMessage::HeroAttack => {
                 println!("Local message HeroAttack");
-                let message = SharedMessage::HeroAttack;
-                let bytes = Bytes::from(message.to_vec());
-                let ws_message = WsMessage::Binary(bytes);
-                if let Err(e) = write_half.send(ws_message).await {
-                    println!("Error sending WsMessage: {:?}", e);
-                }
+                let client_message = client::Message::HeroAttack;
+                send_client_message(&mut write_half, client_message).await;
             }
             other => println!("Got some other message in ws subscription: {:?}", other),
         }

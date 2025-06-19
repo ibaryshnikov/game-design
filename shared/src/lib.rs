@@ -3,7 +3,6 @@ use nalgebra::Point2;
 pub mod action;
 pub mod attack;
 pub mod character;
-pub mod client;
 pub mod effect;
 pub mod hero;
 pub mod level;
@@ -11,8 +10,6 @@ pub mod list;
 pub mod npc;
 pub mod position;
 pub mod projectile;
-pub mod server;
-pub mod types;
 
 use attack::{AttackInfo, AttackKind};
 

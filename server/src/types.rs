@@ -1,6 +1,6 @@
 use tokio::sync::mpsc;
 
-use shared::types::Message as ServerMessage;
+use network::client;
 
 use crate::broadcaster::Message as BroadcasterMessage;
 
@@ -13,6 +13,6 @@ pub enum LocalMessage {
 
 pub enum LoopMessage {
     Broadcaster(Box<BroadcasterMessage>),
-    Server(u128, Box<ServerMessage>),
+    Client(u128, Box<client::Message>),
     LocalMessage(u128, Box<LocalMessage>),
 }

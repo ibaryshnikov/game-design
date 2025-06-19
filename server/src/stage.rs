@@ -1,17 +1,17 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use nalgebra::Point2;
 
 use game_core::boss::Boss;
 use game_core::hero::Hero;
+use game_core::scene::Scene;
 use shared::level::{Level, LevelList};
 use shared::npc::NpcConstructor;
 
 pub struct Stage {
-    boss: Boss,
-    hero: Hero,
-    pub characters: HashMap<u128, Hero>,
-    pub npc: Vec<Boss>,
+    last_update: Instant,
+    pub scene: Scene,
 }
 
 fn load_npc_by_id(id: u32) -> NpcConstructor {
@@ -37,29 +37,32 @@ impl Stage {
         let level_list = load_level_list();
         let boss_constructor = load_npc_by_id(1);
         let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
-        let hero = Hero::new(Point2::new(250.0, 200.0));
-        Stage {
-            boss: boss.clone(),
-            hero,
+        let scene = Scene {
             characters: HashMap::new(),
             npc: vec![boss],
+            effects: Vec::new(),
+            projectiles: Vec::new(),
+        };
+        Stage {
+            last_update: Instant::now(),
+            scene,
         }
     }
     fn load_level(&mut self, id: u32) {
         let level = load_level_by_id(id);
         let npc = &level.npc_list[0];
         let constructor = load_npc_by_id(npc.id);
-        self.boss = Boss::from_constructor(Point2::new(512.0, 384.0), constructor);
-        self.npc = vec![self.boss.clone()];
+        let boss = Boss::from_constructor(Point2::new(512.0, 384.0), constructor);
+        self.scene.npc = vec![boss];
     }
     pub fn add_character(&mut self, id: u128, hero: Hero) {
-        self.characters.insert(id, hero);
+        self.scene.characters.insert(id, hero);
     }
 
     pub fn update(&mut self) {
-        // todo: check when there are more than one enemy to fight with
-        // for (_, character) in self.characters.iter_mut() {
-        //     character.update(&mut self.npc);
-        // }
+        let now = Instant::now();
+        let dt = now.saturating_duration_since(self.last_update).as_millis();
+        self.last_update = now;
+        self.scene.update(dt);
     }
 }

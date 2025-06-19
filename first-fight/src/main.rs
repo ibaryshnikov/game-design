@@ -15,7 +15,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy}
 use winit::keyboard::{KeyCode, ModifiersState, PhysicalKey};
 use winit::window::{Window, WindowId};
 
-use shared::types::{KeyActionKind, Move};
+use network::client;
 
 mod attack;
 mod boss;
@@ -30,10 +30,10 @@ fn key_event_to_message(event: &KeyEvent) -> ui_app::Message {
     match event.physical_key {
         PhysicalKey::Code(code) => {
             let action = match code {
-                KeyCode::KeyW => Move::Up,
-                KeyCode::KeyS => Move::Down,
-                KeyCode::KeyA => Move::Left,
-                KeyCode::KeyD => Move::Right,
+                KeyCode::KeyW => client::Move::Up,
+                KeyCode::KeyS => client::Move::Down,
+                KeyCode::KeyA => client::Move::Left,
+                KeyCode::KeyD => client::Move::Right,
                 KeyCode::ShiftLeft | KeyCode::ShiftRight => {
                     if let ElementState::Pressed = event.state {
                         return ui_app::Message::HeroDash;
@@ -49,8 +49,8 @@ fn key_event_to_message(event: &KeyEvent) -> ui_app::Message {
                 _ => return ui_app::Message::None,
             };
             let kind = match event.state {
-                ElementState::Pressed => KeyActionKind::Pressed,
-                ElementState::Released => KeyActionKind::Released,
+                ElementState::Pressed => client::KeyActionKind::Pressed,
+                ElementState::Released => client::KeyActionKind::Released,
             };
             ui_app::Message::Move(kind, action)
         }
@@ -61,7 +61,7 @@ fn key_event_to_message(event: &KeyEvent) -> ui_app::Message {
 #[derive(Debug)]
 enum UserEvent {
     Tick,
-    Message(ui_app::Message),
+    Message(Box<ui_app::Message>),
 }
 
 struct App {
@@ -217,7 +217,7 @@ impl ApplicationHandler<UserEvent> for App {
                 self.request_redraw();
             }
             UserEvent::Message(message) => {
-                self.ui_app.update(message);
+                self.ui_app.update(*message);
                 self.request_redraw();
             }
         }
