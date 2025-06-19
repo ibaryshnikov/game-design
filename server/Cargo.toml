@@ -25,5 +25,8 @@ features = ["macros", "rt-multi-thread", "sync", "time"]
 [dependencies.game-core]
 path = "../game-core"
 
+[dependencies.network]
+path = "../network"
+
 [dependencies.shared]
 path = "../shared"

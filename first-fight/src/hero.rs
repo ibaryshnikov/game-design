@@ -5,12 +5,21 @@ use game_core::hero::Hero;
 
 use crate::attack::AttackView;
 
-pub struct HeroView {
-    pub hero_info: Hero,
+pub struct HeroView<'a> {
+    pub hero_info: &'a Hero,
 }
 
-impl HeroView {
-    pub fn draw_body(&self, frame: &mut Frame) {
+impl<'a> HeroView<'a> {
+    pub fn new(hero_info: &'a Hero) -> Self {
+        Self { hero_info }
+    }
+    pub fn draw(&self, frame: &mut Frame) {
+        self.draw_body(frame);
+        self.draw_direction(frame);
+        self.draw_attack(frame);
+        self.draw_health_bar(frame);
+    }
+    fn draw_body(&self, frame: &mut Frame) {
         if let Some(dash_info) = &self.hero_info.dashing {
             let percent_completed = dash_info.percent_completed();
             let position = iced_core::Point::new(
@@ -44,7 +53,6 @@ impl HeroView {
                 ..Stroke::default()
             },
         );
-        self.draw_direction(frame);
     }
     fn draw_direction(&self, frame: &mut Frame) {
         let mut direction = self.hero_info.direction;
@@ -63,8 +71,7 @@ impl HeroView {
 
         frame.fill(&path, Color::from_rgb8(0, 255, 0));
     }
-    pub fn draw_health_bar(&self, frame: &mut Frame) {
-        // self.draw_test_data(frame);
+    fn draw_health_bar(&self, frame: &mut Frame) {
         let start = iced_core::Point::new(10.0, 10.0);
         let bar_width = 200.0;
         let bar_height = 20.0;
@@ -86,23 +93,7 @@ impl HeroView {
 
         frame.fill(&path, Color::from_rgb8(0, 255, 0));
     }
-    fn draw_test_data(&self, frame: &mut Frame) {
-        let point_a = iced_core::Point::new(512.0, 384.0);
-        let point_b = iced_core::Point::new(362.60272, 370.567);
-        let point_c = iced_core::Point::new(379.62704, 313.4493);
-        let center = iced_core::Point::new(402.8994, 376.09946);
-        let radius = 20.0;
-        let path = Path::new(|b| {
-            b.move_to(point_a);
-            b.line_to(point_b);
-            b.line_to(point_c);
-            b.line_to(point_a);
-            b.move_to(center);
-            b.circle(center, radius);
-        });
-        frame.fill(&path, Color::from_rgb8(0, 0, 255));
-    }
-    pub fn draw_attack(&self, frame: &mut Frame) {
+    fn draw_attack(&self, frame: &mut Frame) {
         if let Some(attack_info) = &self.hero_info.attacking {
             let attack_view = AttackView::new(attack_info);
             attack_view.draw(frame);

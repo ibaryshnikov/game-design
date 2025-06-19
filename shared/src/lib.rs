@@ -3,6 +3,7 @@ use nalgebra::Point2;
 pub mod action;
 pub mod attack;
 pub mod character;
+pub mod client;
 pub mod effect;
 pub mod hero;
 pub mod level;
@@ -84,25 +85,25 @@ fn check_points_with_circle(
 }
 
 // line equation:
-// x = x1 + t(x2 - x1), t ∈ [0, 1]
-// y = y1 + t(y2 - y1), t ∈ [0, 1]
+// x = x1 + t*(x2 - x1), t ∈ [0, 1]
+// y = y1 + t*(y2 - y1), t ∈ [0, 1]
 //
 // circle equation:
 // (x - a)^2 + (y - b)^2 = R^2
 //
 // combine together:
-// (t(x2 - x1) + x1 - a)^2 + (t(y2 - y1) + y1 - b)^2 = R^2
+// (t*(x2 - x1) + x1 - a)^2 + (t*(y2 - y1) + y1 - b)^2 = R^2
 // let p = x2 - x1
 //     q = x1 - a
 //     k = y2 - y1
 //     l = y1 - b
 // then
-// (p^2 + k^2)t^2 + (2pq + 2kl)t + q^2 +l^2-R^2 = 0
+// (p^2 + k^2)*t^2 + (2*p*q + 2*k*l)*t + q^2 +l^2-R^2 = 0
 // let a = p^2 + k^2
-//     b = 2pq + 2kl
+//     b = 2*p*q + 2*k*l
 //     c = q^2 + l^2 - R^2
 // then
-// at^2 + bt + c = 0
+// a*t^2 + b*t + c = 0
 fn circle_intersects_line_segment(
     start: Point2<f32>,
     end: Point2<f32>,

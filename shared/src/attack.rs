@@ -1,5 +1,4 @@
 use std::fmt::{self, Display};
-use std::time::Instant;
 
 use nalgebra::{Point2, Vector2};
 use serde::{Deserialize, Serialize};
@@ -14,8 +13,9 @@ pub struct ComplexAttackConstructor {
     pub sequences: Vec<AttackSequenceConstructor>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ComplexAttack {
-    pub started_at: Instant,
+    pub time_passed: u128,
     pub sequences: Vec<AttackSequence>,
     pub attacker_position: Point2<f32>,
     pub target_position: Point2<f32>,
@@ -44,16 +44,16 @@ impl ComplexAttack {
             })
             .collect();
         Self {
-            started_at: Instant::now(),
+            time_passed: 0,
             sequences,
             attacker_position,
             target_position,
             direction_angle,
         }
     }
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: u128) {
         for sequence in self.sequences.iter_mut() {
-            sequence.update();
+            sequence.update(dt);
         }
     }
     pub fn completed(&self) -> bool {
@@ -67,8 +67,9 @@ pub struct AttackSequenceConstructor {
     pub parts: Vec<AttackPartConstructor>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AttackSequence {
-    pub started_at: Instant,
+    pub time_passed: u128,
     pub parts: Vec<AttackPart>,
     pub index: usize,
     // pub active_part: Option<AttackPart>,
@@ -97,7 +98,7 @@ impl AttackSequence {
             })
             .collect();
         Self {
-            started_at: Instant::now(),
+            time_passed: 0,
             parts,
             index: 0,
             // active_part: None,
@@ -106,21 +107,21 @@ impl AttackSequence {
     pub fn active_part(&self) -> Option<&AttackPart> {
         self.parts.get(self.index)
     }
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: u128) {
         if self.parts.is_empty() {
             return;
         }
-        self.update_with_index();
+        self.update_with_index(dt);
     }
-    fn update_with_index(&mut self) {
+    fn update_with_index(&mut self, dt: u128) {
         if self.index >= self.parts.len() {
             return;
         }
         if self.parts[self.index].completed() {
             self.index += 1;
-            self.update_with_index();
+            self.update_with_index(dt);
         } else {
-            self.parts[self.index].update();
+            self.parts[self.index].update(dt);
         }
     }
     pub fn completed(&self) -> bool {
@@ -136,8 +137,9 @@ pub struct CircleConstructor {
     pub time_to_complete: u128,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Circle {
-    pub started_at: Instant,
+    pub time_passed: u128,
     pub time_to_complete: u128,
     pub position: Point2<f32>,
     pub direction: Vector2<f32>,
@@ -152,7 +154,7 @@ impl Circle {
         direction: Vector2<f32>,
     ) -> Self {
         Self {
-            started_at: Instant::now(),
+            time_passed: 0,
             time_to_complete: constructor.time_to_complete,
             position,
             direction,
@@ -160,16 +162,15 @@ impl Circle {
             percent_completed: 0.0,
         }
     }
-    pub fn update(&mut self) {
-        let time_passed = self.started_at.elapsed().as_millis();
-        // self.time_passed = time_passed;
-        let mut percent_completed = time_passed as f32 / self.time_to_complete as f32;
+    pub fn update(&mut self, dt: u128) {
+        self.time_passed += dt;
+        let mut percent_completed = self.time_passed as f32 / self.time_to_complete as f32;
         if percent_completed > 1.0 {
             percent_completed = 1.0;
         }
         self.percent_completed = percent_completed;
-        self.position.x += self.direction.x * time_passed as f32 / 30.0;
-        self.position.y += self.direction.y * time_passed as f32 / 30.0;
+        self.position.x += self.direction.x * self.time_passed as f32 / 30.0;
+        self.position.y += self.direction.y * self.time_passed as f32 / 30.0;
     }
     pub fn intersects_with_circle(&self, center: Point2<f32>, radius: f32) -> bool {
         let dx = self.position.x - center.x;
@@ -186,7 +187,10 @@ pub struct PizzaConstructor {
     pub order: AttackOrder,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Pizza {
+    pub time_passed: u128,
+    pub time_to_complete: u128,
     pub position: Point2<f32>,
     pub radius: f32,
     pub direction: Vector2<f32>,
@@ -213,6 +217,8 @@ impl Pizza {
             order,
         } = constructor;
         Self {
+            time_passed: 0,
+            time_to_complete: 0,
             position,
             radius,
             direction,
@@ -221,7 +227,8 @@ impl Pizza {
             percent_completed: 0.0,
         }
     }
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: u128) {
+        self.time_passed += dt;
         // do nothing for now
     }
     pub fn intersects_with_circle(&self, center: Point2<f32>, radius: f32) -> bool {
@@ -298,6 +305,7 @@ pub enum AttackShapeConstructor {
     Hexagon,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum AttackShape {
     Circle(Circle),
     Pizza(Pizza),
@@ -340,12 +348,12 @@ pub struct AttackDamageConstructor {
     pub delay_between_instances: u32,
 }
 
-// #[derive(Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AttackDamage {
     pub value: u32,
     pub instances: u32,
     pub delay_between_instances: u32,
-    pub last_done: Option<Instant>,
+    pub time_since_last_done: u128,
 }
 
 impl AttackDamage {
@@ -359,24 +367,23 @@ impl AttackDamage {
             value,
             instances,
             delay_between_instances,
-            last_done: None,
+            time_since_last_done: 0,
         }
     }
     pub fn has_instances(&self) -> bool {
         self.instances > 0
     }
-    pub fn do_damage<T: ReceiveDamage>(&mut self, target: &mut T) {
+    pub fn do_damage<T: ReceiveDamage>(&mut self, target: &mut T, dt: u128) {
         if !self.has_instances() {
             return;
         }
-        if let Some(last_done) = self.last_done {
-            if last_done.elapsed().as_millis() < self.delay_between_instances as u128 {
-                return;
-            }
+        self.time_since_last_done += dt;
+        if self.time_since_last_done < self.delay_between_instances as u128 {
+            return;
         }
         target.receive_damage(self.value);
         self.instances -= 1;
-        self.last_done = Some(Instant::now());
+        self.time_since_last_done = 0;
     }
 }
 
@@ -389,8 +396,9 @@ pub struct AttackPartConstructor {
 }
 
 // #[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AttackPart {
-    pub started_at: Instant,
+    pub time_passed: u128,
     pub time_to_complete: u128,
     pub shape: AttackShape,
     pub attacker_position: Point2<f32>,
@@ -424,7 +432,7 @@ impl AttackPart {
             direction,
         );
         Self {
-            started_at: Instant::now(),
+            time_passed: 0,
             time_to_complete,
             shape,
             attacker_position,
@@ -442,23 +450,35 @@ impl AttackPart {
             _ => false, // not implemented yet
         }
     }
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: u128) {
         use AttackShape::*;
         match &mut self.shape {
-            Circle(circle) => circle.update(),
-            Pizza(pizza) => pizza.update(),
+            Circle(circle) => circle.update(dt),
+            Pizza(pizza) => pizza.update(dt),
             _ => (),
         }
     }
     pub fn completed(&self) -> bool {
-        self.started_at.elapsed().as_millis() > self.time_to_complete
+        self.time_passed >= self.time_to_complete
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SelectionInfo {
     pub position: Point2<f32>,
-    pub selected_at: Instant,
+    pub time_passed: u128,
+}
+
+impl SelectionInfo {
+    pub fn new(position: Point2<f32>) -> Self {
+        Self {
+            position,
+            time_passed: 0,
+        }
+    }
+    pub fn update(&mut self, dt: u128) {
+        self.time_passed += dt;
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -588,13 +608,12 @@ impl Default for AttackConstructor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AttackInfo {
     pub position: Point2<f32>,
     pub direction: Vector2<f32>,
-    pub started_at: Instant,
-    pub time_passed: u128,
     pub delay: u128,
+    pub time_passed: u128,
     pub time_to_complete: u128, // ms
     pub aftercast: u128,
     pub percent_completed: f32,
@@ -628,9 +647,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay,
+            time_passed: 0,
             time_to_complete,
             aftercast,
             percent_completed: 0.0,
@@ -652,9 +670,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 700,
+            time_passed: 0,
             time_to_complete: 600,
             aftercast: 600,
             percent_completed: 0.0,
@@ -670,9 +687,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 300,
+            time_passed: 0,
             time_to_complete: 100,
             aftercast: 500,
             percent_completed: 0.0,
@@ -688,9 +704,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 300,
+            time_passed: 0,
             time_to_complete: 200,
             aftercast: 600,
             percent_completed: 0.0,
@@ -706,9 +721,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 300,
+            time_passed: 0,
             time_to_complete: 200,
             aftercast: 600,
             percent_completed: 0.0,
@@ -724,9 +738,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 300,
+            time_passed: 0,
             time_to_complete: 200,
             aftercast: 600,
             percent_completed: 0.0,
@@ -742,9 +755,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 300,
+            time_passed: 0,
             time_to_complete: 200,
             aftercast: 600,
             percent_completed: 0.0,
@@ -760,9 +772,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 300,
+            time_passed: 0,
             time_to_complete: 200,
             aftercast: 600,
             percent_completed: 0.0,
@@ -778,9 +789,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 300,
+            time_passed: 0,
             time_to_complete: 200,
             aftercast: 600,
             percent_completed: 0.0,
@@ -800,9 +810,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 100,
+            time_passed: 0,
             time_to_complete: 500,
             aftercast: 300,
             percent_completed: 0.0,
@@ -818,9 +827,8 @@ impl AttackInfo {
         AttackInfo {
             position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 400,
+            time_passed: 0,
             time_to_complete: 600,
             aftercast: 300,
             percent_completed: 0.0,
@@ -844,33 +852,31 @@ impl AttackInfo {
 }
 
 impl AttackInfo {
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: u128) {
+        self.time_passed += dt;
         match self.state {
             AttackState::Selected => {
-                if self.started_at.elapsed().as_millis() < self.delay {
+                if self.time_passed < self.delay {
                     return;
                 }
                 self.state = AttackState::Attacking;
-                self.started_at = Instant::now();
+                self.time_passed -= self.delay;
             }
             AttackState::Attacking => {
-                let time_passed = self.started_at.elapsed().as_millis();
-                // self.time_passed = time_passed;
-                let mut percent_completed = time_passed as f32 / self.time_to_complete as f32;
+                let mut percent_completed = self.time_passed as f32 / self.time_to_complete as f32;
                 if percent_completed > 1.0 {
                     percent_completed = 1.0;
                 }
                 self.percent_completed = percent_completed;
                 if let AttackOrder::ProjectileFromCaster = self.order {
-                    self.position.x += self.direction.x * time_passed as f32 / 30.0;
-                    self.position.y += self.direction.y * time_passed as f32 / 30.0;
+                    self.position.x += self.direction.x * self.time_passed as f32 / 30.0;
+                    self.position.y += self.direction.y * self.time_passed as f32 / 30.0;
                 }
             }
         }
     }
     pub fn completed(&self) -> bool {
-        let time_passed = self.started_at.elapsed().as_millis();
-        time_passed > self.time_to_complete + self.aftercast
+        self.time_passed > self.time_to_complete + self.aftercast
     }
     pub fn width_radian(&self) -> f32 {
         let radian = self.width_angle;
@@ -918,8 +924,23 @@ impl AttackInfo {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RecoverInfo {
-    pub started_at: Instant,
+    pub time_passed: u128,
     pub time_to_complete: u128,
+}
+
+impl RecoverInfo {
+    pub fn new(time_to_complete: u128) -> Self {
+        RecoverInfo {
+            time_passed: 0,
+            time_to_complete,
+        }
+    }
+    pub fn update(&mut self, dt: u128) {
+        self.time_passed += dt;
+    }
+    pub fn completed(&self) -> bool {
+        self.time_passed >= self.time_to_complete
+    }
 }

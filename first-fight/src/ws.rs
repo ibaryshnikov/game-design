@@ -162,7 +162,15 @@ async fn handle_ws_message(_proxy: &EventLoopProxy<UserEvent>, message: WsMessag
             println!("Got text message: {}", text);
         }
         WsMessage::Binary(data) => {
+            use game_core::server::ServerMessage;
             println!("Got binary data: {:?}", data);
+            let m = ServerMessage::from_slice(&data);
+            match m {
+                ServerMessage::Test => {}
+                ServerMessage::Scene(scene) => {
+                    println!("Got Scene from server, npc.len(): {:?}", scene.npc.len());
+                }
+            }
         }
         other => {
             println!("Got other message: {:?}", other);

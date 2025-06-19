@@ -1,31 +1,23 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
+use crate::boss::Boss;
 use crate::hero::Hero;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum Move {
-    Up,
-    Down,
-    Left,
-    Right,
+pub struct Scene {
+    pub characters: HashMap<u128, Hero>,
+    pub npc: Vec<Boss>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum KeyActionKind {
-    Pressed,
-    Released,
+pub enum ServerMessage {
+    Test,
+    Scene(Scene),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub enum Message {
-    Join,
-    Move(KeyActionKind, Move),
-    HeroDash,
-    HeroAttack,
-    Hero(Hero),
-}
-
-impl Message {
+impl ServerMessage {
     pub fn from_slice(data: &[u8]) -> Self {
         rmp_serde::from_slice(data).unwrap()
     }

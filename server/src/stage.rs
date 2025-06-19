@@ -10,8 +10,8 @@ use shared::npc::NpcConstructor;
 pub struct Stage {
     boss: Boss,
     hero: Hero,
-    characters: HashMap<u128, Hero>,
-    npc: Vec<Boss>,
+    pub characters: HashMap<u128, Hero>,
+    pub npc: Vec<Boss>,
 }
 
 fn load_npc_by_id(id: u32) -> NpcConstructor {
@@ -39,10 +39,10 @@ impl Stage {
         let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
         let hero = Hero::new(Point2::new(250.0, 200.0));
         Stage {
-            boss,
+            boss: boss.clone(),
             hero,
             characters: HashMap::new(),
-            npc: vec![],
+            npc: vec![boss],
         }
     }
     fn load_level(&mut self, id: u32) {
@@ -50,6 +50,7 @@ impl Stage {
         let npc = &level.npc_list[0];
         let constructor = load_npc_by_id(npc.id);
         self.boss = Boss::from_constructor(Point2::new(512.0, 384.0), constructor);
+        self.npc = vec![self.boss.clone()];
     }
     pub fn add_character(&mut self, id: u128, hero: Hero) {
         self.characters.insert(id, hero);

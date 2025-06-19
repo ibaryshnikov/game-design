@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::hero::Hero;
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Move {
     Up,
@@ -22,7 +20,6 @@ pub enum Message {
     Move(KeyActionKind, Move),
     HeroDash,
     HeroAttack,
-    Hero(Hero),
 }
 
 impl Message {

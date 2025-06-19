@@ -20,6 +20,7 @@ use shared::types::{KeyActionKind, Move};
 mod attack;
 mod boss;
 mod hero;
+mod scene;
 mod ui_app;
 mod ws;
 

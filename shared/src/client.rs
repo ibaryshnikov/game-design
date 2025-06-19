@@ -16,16 +16,22 @@ pub enum KeyActionKind {
     Released,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub enum Message {
-    Join,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum CharacterAction {
     Move(KeyActionKind, Move),
-    HeroDash,
-    HeroAttack,
-    Hero(Hero),
+    Dash,
+    Attack,
+    Update(Hero),
 }
 
-impl Message {
+#[derive(Deserialize, Serialize)]
+pub enum ClientMessage {
+    Join,
+    CharacterAction(CharacterAction),
+}
+
+
+impl ClientMessage {
     pub fn from_slice(data: &[u8]) -> Self {
         rmp_serde::from_slice(data).unwrap()
     }

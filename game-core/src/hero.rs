@@ -1,6 +1,5 @@
-use std::time::Instant;
-
 use nalgebra::{Point2, Vector2};
+use serde::{Deserialize, Serialize};
 
 use shared::action::Action;
 use shared::attack::{
@@ -13,6 +12,7 @@ use shared::types::{KeyActionKind, Move};
 
 use crate::boss::Boss;
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Hero {
     pub id: String,
     pub hp: i32,
@@ -20,8 +20,7 @@ pub struct Hero {
     pub position: Point2<f32>,
     pub direction: Vector2<f32>,
     moving: Moving,
-    last_key_up: Option<Instant>,
-    last_tick: Instant,
+    last_key_up: Option<u128>,
     pub melee_attack_distance: f32,
     pub ranged_attack_distance: f32,
     pub selected: Option<SelectionInfo>,
@@ -63,7 +62,6 @@ impl Hero {
                 down: false,
             },
             last_key_up: None,
-            last_tick: Instant::now(),
             melee_attack_distance: 100.0,
             ranged_attack_distance: 300.0,
             selected: None,
@@ -141,11 +139,7 @@ impl Hero {
             return;
         }
         direction.normalize_mut();
-        let dash_info = DashInfo {
-            direction,
-            started: Instant::now(),
-            time_to_complete: self.character_settings.dash_duration,
-        };
+        let dash_info = DashInfo::new(direction, self.character_settings.dash_duration);
         self.dashing = Some(dash_info);
     }
     pub fn check_attack(&mut self) {
@@ -167,9 +161,8 @@ impl Hero {
         let attack_info = AttackInfo {
             position: self.position,
             direction,
-            started_at: Instant::now(),
-            time_passed: 0,
             delay: 50,
+            time_passed: 0,
             time_to_complete: 100,
             aftercast: 0,
             percent_completed: 0.0,
@@ -195,38 +188,60 @@ impl Hero {
             }
             KeyActionKind::Released => {
                 *moving = false;
-                self.last_key_up = Some(Instant::now());
+                self.last_key_up = Some(0);
             }
         };
         self.update_direction();
     }
-    pub fn update(&mut self, boss: &mut Boss) {
-        self.update_position();
-        if let Some(time_passed) = self.last_key_up {
-            if time_passed.elapsed().as_millis() > 100 {
+    pub fn update_visuals(&mut self, dt: u128) {
+        self.update_position(dt);
+        if let Some(time_passed) = &mut self.last_key_up {
+            *time_passed += dt;
+            if *time_passed > 100 {
                 self.last_key_up = None;
                 if self.is_moving() {
                     self.update_direction();
                 }
             }
         }
-        if let Some(cooldown) = &self.dash_cooldown {
-            if cooldown.started.elapsed().as_millis() >= cooldown.duration {
+        if let Some(cooldown) = &mut self.dash_cooldown {
+            cooldown.update(dt);
+            if cooldown.completed() {
                 self.dash_cooldown = None;
             }
         }
         if self.attacking.is_some() {
-            self.update_attack(boss);
+            self.update_attack_visuals(dt);
         }
         if self.recovering.is_some() {
-            self.update_recovery();
+            self.update_recovery(dt);
         }
     }
-    fn update_position(&mut self) {
-        let now = Instant::now();
-        let elapsed = self.last_tick.elapsed().as_millis();
-        self.last_tick = now;
-
+    pub fn update(&mut self, npc: &mut [Boss], dt: u128) {
+        self.update_position(dt);
+        if let Some(time_passed) = &mut self.last_key_up {
+            *time_passed += dt;
+            if *time_passed > 100 {
+                self.last_key_up = None;
+                if self.is_moving() {
+                    self.update_direction();
+                }
+            }
+        }
+        if let Some(cooldown) = &mut self.dash_cooldown {
+            cooldown.update(dt);
+            if cooldown.completed() {
+                self.dash_cooldown = None;
+            }
+        }
+        if self.attacking.is_some() {
+            self.update_attack(npc, dt);
+        }
+        if self.recovering.is_some() {
+            self.update_recovery(dt);
+        }
+    }
+    fn update_position(&mut self, dt: u128) {
         if self.attacking.is_some() {
             return;
         }
@@ -234,15 +249,12 @@ impl Hero {
             return;
         }
 
-        if let Some(dash_info) = &self.dashing {
-            if dash_info.percent_completed() > 1.0 {
+        if let Some(dash_info) = &mut self.dashing {
+            dash_info.update(dt);
+            if dash_info.completed() {
                 self.position += dash_info.direction * self.character_settings.dash_distance as f32;
                 self.dashing = None;
-                let cooldown = DashCooldown {
-                    started: Instant::now(),
-                    duration: 200,
-                };
-                self.dash_cooldown = Some(cooldown);
+                self.dash_cooldown = Some(DashCooldown::new(200));
             }
         }
 
@@ -250,33 +262,41 @@ impl Hero {
         if self.moving.left && self.moving.right {
             // do nothing
         } else if self.moving.left {
-            self.position.x -= elapsed as f32 * speed;
+            self.position.x -= dt as f32 * speed;
         } else if self.moving.right {
-            self.position.x += elapsed as f32 * speed;
+            self.position.x += dt as f32 * speed;
         }
 
         if self.moving.up && self.moving.down {
             // do nothing
         } else if self.moving.up {
-            self.position.y -= elapsed as f32 * speed;
+            self.position.y -= dt as f32 * speed;
         } else if self.moving.down {
-            self.position.y += elapsed as f32 * speed;
+            self.position.y += dt as f32 * speed;
         }
     }
-    fn update_attack(&mut self, boss: &mut Boss) {
+    fn update_attack_visuals(&mut self, dt: u128) {
         let Some(attack_info) = &mut self.attacking else {
             return;
         };
-        attack_info.update();
+        attack_info.update(dt);
         if attack_info.completed() {
-            if check_hit(attack_info, self.melee_attack_distance, boss.position) {
-                boss.receive_damage();
+            self.recovering = Some(RecoverInfo::new(0));
+            self.attacking = None;
+        }
+    }
+    fn update_attack(&mut self, npc: &mut [Boss], dt: u128) {
+        let Some(attack_info) = &mut self.attacking else {
+            return;
+        };
+        attack_info.update(dt);
+        if attack_info.completed() {
+            for boss in npc.iter_mut() {
+                if check_hit(attack_info, self.melee_attack_distance, boss.position) {
+                    boss.receive_damage();
+                }
             }
-            let recover_info = RecoverInfo {
-                started_at: Instant::now(),
-                time_to_complete: 0,
-            };
-            self.recovering = Some(recover_info);
+            self.recovering = Some(RecoverInfo::new(0));
             self.attacking = None;
         }
     }

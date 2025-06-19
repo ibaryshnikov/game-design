@@ -1,6 +1,7 @@
-use std::time::Instant;
+use std::collections::HashMap;
 
 use nalgebra::{Point2, Vector2};
+use serde::{Deserialize, Serialize};
 
 use shared::action::Action;
 use shared::attack::{
@@ -15,6 +16,7 @@ use shared::position::{direction_from, distance_between};
 
 use crate::hero::Hero;
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Boss {
     pub position: Point2<f32>,
     attacks: Vec<AttackConstructor>,
@@ -117,31 +119,36 @@ impl Boss {
         self.attacking = None;
         self.recovering = None;
     }
-    pub fn update(&mut self, hero: &mut Hero) {
-        if self.attacking.is_some() {
-            self.update_attack(hero);
+    pub fn update(&mut self, characters: &mut HashMap<u128, Hero>, dt: u128) {
+        self.update_attack(characters, dt);
+        self.update_attack_complex(characters, dt);
+        self.update_recovery(dt);
+        if characters.is_empty() {
+            return;
         }
-        if self.attacking_complex.is_some() {
-            self.update_attack_complex(hero);
+        let index = if characters.len() == 1 {
+            0
+        } else {
+            rand::random_range(0..characters.len())
+        };
+        if let Some(character) = characters.values().nth(index) {
+            self.check_new_attack(character.position);
         }
-        if self.recovering.is_some() {
-            self.update_recovery();
-        }
-        self.check_new_attack(hero.position);
-        // self.check_new_attack_complex(hero.position);
     }
-    fn update_attack(&mut self, hero: &mut Hero) {
+    fn update_attack(&mut self, characters: &mut HashMap<u128, Hero>, dt: u128) {
         let Some(attack_info) = &mut self.attacking else {
             return;
         };
-        attack_info.update();
+        attack_info.update(dt);
         match attack_info.order {
             AttackOrder::ProjectileFromCaster => {
-                if !attack_info.damage_done
-                    && check_hit(attack_info, attack_info.distance, hero.position)
-                {
-                    hero.receive_damage();
-                    attack_info.damage_done = true;
+                if !attack_info.damage_done {
+                    for hero in characters.values_mut() {
+                        if check_hit(attack_info, attack_info.distance, hero.position) {
+                            hero.receive_damage();
+                            attack_info.damage_done = true;
+                        }
+                    }
                 }
             }
             _ => (),
@@ -149,22 +156,22 @@ impl Boss {
         if attack_info.completed() {
             if let AttackOrder::ProjectileFromCaster = attack_info.order {
                 // do nothing, we did check_hit above
-            } else if check_hit(attack_info, attack_info.distance, hero.position) {
-                hero.receive_damage();
+            } else {
+                for hero in characters.values_mut() {
+                    if check_hit(attack_info, attack_info.distance, hero.position) {
+                        hero.receive_damage();
+                    }
+                }
             }
-            let recover_info = RecoverInfo {
-                started_at: Instant::now(),
-                time_to_complete: 500,
-            };
-            self.recovering = Some(recover_info);
+            self.recovering = Some(RecoverInfo::new(attack_info.aftercast));
             self.attacking = None;
         }
     }
-    fn update_attack_complex(&mut self, hero: &mut Hero) {
+    fn update_attack_complex(&mut self, _characters: &mut HashMap<u128, Hero>, dt: u128) {
         let Some(attack_info) = &mut self.attacking_complex else {
             return;
         };
-        attack_info.update();
+        attack_info.update(dt);
         if attack_info.completed() {
             self.attacking_complex = None;
         }

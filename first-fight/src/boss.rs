@@ -5,11 +5,19 @@ use game_core::boss::Boss;
 
 use crate::attack::{AttackView, ComplexAttackView};
 
-pub struct BossView {
-    pub boss_info: Boss,
+pub struct BossView<'a> {
+    pub boss_info: &'a Boss,
 }
 
-impl BossView {
+impl<'a> BossView<'a> {
+    pub fn new(boss_info: &'a Boss) -> Self {
+        Self { boss_info }
+    }
+    pub fn draw(&self, frame: &mut Frame) {
+        self.draw_body(frame);
+        self.draw_attack(frame);
+        self.draw_health_bar(frame);
+    }
     pub fn draw_body(&self, frame: &mut Frame) {
         let position = iced_core::Point::new(self.boss_info.position.x, self.boss_info.position.y);
         let path = Path::new(|b| {
@@ -25,7 +33,6 @@ impl BossView {
         );
     }
     pub fn draw_health_bar(&self, frame: &mut Frame) {
-        // self.draw_test_data(frame);
         let start = iced_core::Point::new(100.0, 700.0);
         let bar_width = 800.0;
         let bar_height = 10.0;

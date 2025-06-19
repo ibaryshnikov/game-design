@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use iced_wgpu::Renderer;
 use iced_widget::canvas::{self, Cache, Canvas, Geometry};
@@ -11,12 +12,13 @@ use winit::event_loop::EventLoopProxy;
 
 use game_core::boss::Boss;
 use game_core::hero::Hero;
+use game_core::scene::Scene;
 use shared::level::{Level, LevelInfo, LevelList};
 use shared::npc::NpcConstructor;
 use shared::types::{KeyActionKind, Move};
 
-use crate::boss::BossView;
 use crate::hero::HeroView;
+use crate::scene::SceneView;
 use crate::{ws, UserEvent};
 
 #[derive(Debug, Clone)]
@@ -29,6 +31,7 @@ pub enum Message {
     WsDisconnected,
     WsMessage(String),
     ServerAction(ServerAction),
+    ServerMessage(game_core::server::ServerMessage),
     Tick,
     SwitchToLevelSelect,
     Start(u32),
@@ -49,10 +52,11 @@ enum FightState {
 }
 
 pub struct UiApp {
+    last_update: Instant,
     proxy: EventLoopProxy<UserEvent>,
     cache: Cache,
-    boss: BossView,
-    hero: HeroView,
+    hero: Hero,
+    scene: Scene,
     characters: HashMap<u128, Hero>,
     npc_list: HashMap<u128, Boss>,
     state: FightState,
@@ -83,15 +87,15 @@ impl UiApp {
     pub fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
         let level_list = load_level_list();
         let boss_constructor = load_npc_by_id(1);
-        let boss_info = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
-        let boss = BossView { boss_info };
-        let hero_info = Hero::new(Point2::new(250.0, 200.0));
-        let hero = HeroView { hero_info };
+        let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
+        let hero = Hero::new(Point2::new(250.0, 200.0));
+        let scene = Scene::new(hero.clone(), boss);
         UiApp {
+            last_update: Instant::now(),
             proxy,
             cache: Cache::new(),
-            boss,
             hero,
+            scene,
             characters: HashMap::new(),
             npc_list: HashMap::new(),
             state: FightState::Pending,
@@ -102,10 +106,14 @@ impl UiApp {
     }
     fn load_level(&mut self, id: u32) {
         let level = load_level_by_id(id);
-        let npc = &level.npc_list[0];
-        let constructor = load_npc_by_id(npc.id);
-        let boss_info = Boss::from_constructor(Point2::new(512.0, 384.0), constructor);
-        self.boss = BossView { boss_info };
+        self.scene.npc = level
+            .npc_list
+            .iter()
+            .map(|npc| {
+                let constructor = load_npc_by_id(npc.id);
+                Boss::from_constructor(Point2::new(512.0, 384.0), constructor)
+            })
+            .collect();
     }
 }
 
@@ -126,41 +134,43 @@ impl UiApp {
             Message::ServerAction(_action) => {
                 // do nothing for now
             }
+            Message::ServerMessage(m) => {
+                self.scene.handle_server_message(m);
+            }
             Message::WsMessage(text) => {
                 println!("Got ws message: {}", text);
             }
             Message::Move(kind, movement) => {
                 // println!("Moving: {:?} {:?}", kind, movement);
-                self.hero
-                    .hero_info
-                    .handle_move_action(kind.clone(), movement.clone());
+                self.hero.handle_move_action(kind.clone(), movement.clone());
                 if let Some(sender) = &mut self.ws_sender {
                     let _ = sender.try_send(ws::LocalMessage::Move(kind, movement));
                 }
             }
             Message::HeroDash => {
-                self.hero.hero_info.dash();
+                self.hero.dash();
                 if let Some(sender) = &mut self.ws_sender {
                     let _ = sender.try_send(ws::LocalMessage::HeroDash);
                 }
             }
             Message::HeroAttack => {
-                self.hero.hero_info.check_attack();
+                self.hero.check_attack();
                 if let Some(sender) = &mut self.ws_sender {
                     let _ = sender.try_send(ws::LocalMessage::HeroAttack);
                 }
             }
             Message::Tick => {
-                self.hero.hero_info.update(&mut self.boss.boss_info);
-                self.boss.boss_info.update(&mut self.hero.hero_info);
-                if self.hero.hero_info.defeated() {
+                let now = Instant::now();
+                let dt = now.saturating_duration_since(self.last_update).as_millis();
+                self.last_update = now;
+                self.hero.update_visuals(dt);
+                self.scene.update(dt);
+                if self.scene.characters.values().all(|hero| hero.defeated()) {
                     self.state = FightState::Loss;
-                    self.hero.hero_info.stop();
-                    self.boss.boss_info.stop();
-                } else if self.boss.boss_info.defeated() {
+                    self.scene.stop();
+                } else if self.scene.npc.iter().all(|boss| boss.defeated()) {
                     self.state = FightState::Win;
-                    self.hero.hero_info.stop();
-                    self.boss.boss_info.stop();
+                    self.scene.stop();
                 }
             }
             Message::SwitchToLevelSelect => {
@@ -179,8 +189,7 @@ impl UiApp {
                 self.state = FightState::Action;
             }
             Message::Retry => {
-                self.hero.hero_info.reset();
-                self.boss.boss_info.reset();
+                self.scene.reset();
                 self.state = FightState::Action;
             }
             _ => (),
@@ -213,12 +222,8 @@ impl<Message> canvas::Program<Message> for UiApp {
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
-            self.boss.draw_body(frame);
-            self.hero.draw_body(frame);
-            self.boss.draw_attack(frame);
-            self.hero.draw_attack(frame);
-            self.boss.draw_health_bar(frame);
-            self.hero.draw_health_bar(frame);
+            HeroView::new(&self.hero).draw(frame);
+            SceneView::new(&self.scene).draw(frame);
         });
 
         vec![geometry]

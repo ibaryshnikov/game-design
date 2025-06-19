@@ -97,12 +97,9 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
         tracing::error!("Failed to send WebSocket message to broadcaster: {e}");
     }
 
-    let message = ServerMessage::Move(KeyActionKind::Pressed, Move::Up);
-    let data = message.to_vec();
-    let ws_message = Message::Binary(Bytes::from(data));
-    let message = Box::new(broadcaster::Message::SendMessage(id, ws_message));
-    if let Err(e) = sender.send(LoopMessage::Broadcaster(message)).await {
-        tracing::error!("Failed to send WebSocket message to broadcaster: {e}");
+    let m = Box::new(types::LocalMessage::Join);
+    if let Err(e) = sender.send(LoopMessage::LocalMessage(id, m)).await {
+        tracing::error!("Failed to send LoopMessage::LocalMessage: {e}");
     }
 
     println!("Started reading loop");
