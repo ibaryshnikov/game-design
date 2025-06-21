@@ -10,6 +10,7 @@ use futures::stream::StreamExt;
 use http::HeaderValue;
 use tokio::sync::mpsc;
 use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 // use tower_http::validate_request::ValidateRequestHeaderLayer;
 use uuid::Uuid;
 
@@ -41,6 +42,7 @@ async fn main() {
     };
 
     let app = Router::new()
+        .nest_service("/game", serve_web_client())
         .route("/login", routing::post(login_user))
         .route("/ws", routing::get(ws_handler))
         .route("/", routing::get(|| async { "hello from axum\n" }))
@@ -50,6 +52,10 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     println!("listening at {address}");
     axum::serve(listener, app).await.unwrap();
+}
+
+fn serve_web_client() -> ServeDir {
+    ServeDir::new("../client-web/dist")
 }
 
 async fn login_user() -> String {
