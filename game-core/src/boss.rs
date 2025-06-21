@@ -15,6 +15,7 @@ use shared::npc::{NpcConstructor, load_attacks, load_complex_attacks};
 use shared::position::{direction_from, distance_between};
 
 use crate::hero::Hero;
+use crate::scene;
 
 pub struct Boss {
     pub position: Point2<f32>,
@@ -122,6 +123,19 @@ impl Boss {
             max_hp: self.max_hp,
         }
     }
+    pub fn from_network(boss: server::Boss) -> Self {
+        Self {
+            position: boss.position,
+            attacks: Vec::new(),
+            attacking: boss.attacking.clone(),
+            recovering: boss.recovering.clone(),
+            attacks_complex: Vec::new(),
+            attacking_complex: boss.attacking_complex.clone(),
+            action: boss.action.clone(),
+            hp: boss.hp,
+            max_hp: boss.max_hp,
+        }
+    }
     pub fn reset(&mut self) {
         self.hp = self.max_hp;
     }
@@ -129,12 +143,22 @@ impl Boss {
         self.attacking = None;
         self.recovering = None;
     }
-    pub fn update(&mut self, characters: &mut HashMap<u128, Hero>, dt: u128) {
+    pub fn update(
+        &mut self,
+        characters: &mut HashMap<u128, Hero>,
+        dt: u128,
+        scene_mode: scene::Mode,
+    ) -> bool {
         self.update_attack(characters, dt);
         self.update_attack_complex(characters, dt);
         self.update_recovery(dt);
+
+        if let scene::Mode::Client = scene_mode {
+            return false;
+        }
+
         if characters.is_empty() {
-            return;
+            return false;
         }
         let index = if characters.len() == 1 {
             0
@@ -142,7 +166,9 @@ impl Boss {
             rand::random_range(0..characters.len())
         };
         if let Some(character) = characters.values().nth(index) {
-            self.check_new_attack(character.position);
+            self.check_new_attack(character.position)
+        } else {
+            false
         }
     }
     fn update_attack(&mut self, characters: &mut HashMap<u128, Hero>, dt: u128) {
@@ -187,9 +213,9 @@ impl Boss {
             self.attacking_complex = None;
         }
     }
-    fn check_new_attack(&mut self, character_position: Point2<f32>) {
+    fn check_new_attack(&mut self, character_position: Point2<f32>) -> bool {
         if self.attacking.is_some() || self.recovering.is_some() {
-            return;
+            return false;
         }
         let distance = distance_between(&self.position, &character_position);
         let attacks: Vec<_> = self
@@ -198,7 +224,7 @@ impl Boss {
             .filter(|attack| attack.range.in_range(distance))
             .collect();
         if attacks.is_empty() {
-            return;
+            return false;
         }
         let index = rand::random_range(0..attacks.len());
         let constructor = attacks[index].clone();
@@ -221,6 +247,7 @@ impl Boss {
             }
         };
         self.attacking = Some(attack_info);
+        true // send updates to client if it's a server
     }
     fn check_new_attack_complex(&mut self, character_position: Point2<f32>) {
         if self.attacking_complex.is_some() {

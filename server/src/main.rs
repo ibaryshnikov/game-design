@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::body::Bytes;
-use axum::extract::ws::{Message, Utf8Bytes, WebSocket, WebSocketUpgrade};
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::{routing, Router};
@@ -14,6 +14,7 @@ use tower_http::cors::CorsLayer;
 use uuid::Uuid;
 
 use network::client;
+use network::server;
 
 mod broadcaster;
 mod game_loop;
@@ -66,39 +67,25 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) ->
 
 async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
     let (mut write, mut read) = socket.split();
-    if write
-        .send(Message::Ping(Bytes::from(vec![1, 2, 3])))
-        .await
-        .is_ok()
-    {
-        println!("Pinged!");
-    } else {
-        println!("Couldn't send ping to !");
-        return;
+
+    let data = server::Message::SetId(id).to_vec();
+    let ws_message = Message::Binary(Bytes::from(data));
+    if let Err(e) = write.send(ws_message).await {
+        tracing::error!("Failed to send SetId message to client: {e}");
     }
+
     let message = Box::new(broadcaster::Message::AddWriter(id, write));
     if let Err(e) = sender.send(LoopMessage::Broadcaster(message)).await {
         tracing::error!("Failed to send WebSocket writer to broadcaster: {e}");
         tracing::error!("Closing socket for {id}");
         return;
     }
-    if let Some(maybe_message) = read.next().await {
-        if let Ok(incoming_message) = maybe_message {
-            println!("Got message {:?}", incoming_message);
-        } else {
-            println!("Client abruptly disconnected");
-            return;
-        }
-    }
 
-    let ws_message = Message::Text(Utf8Bytes::from("Hello from axum and ws".to_owned()));
-    let message = Box::new(broadcaster::Message::SendMessage(id, ws_message));
-    if let Err(e) = sender.send(LoopMessage::Broadcaster(message)).await {
-        tracing::error!("Failed to send WebSocket message to broadcaster: {e}");
-    }
-
-    let m = Box::new(types::LocalMessage::Join);
-    if let Err(e) = sender.send(LoopMessage::LocalMessage(id, m)).await {
+    let local_message = Box::new(types::LocalMessage::Join);
+    if let Err(e) = sender
+        .send(LoopMessage::LocalMessage(id, local_message))
+        .await
+    {
         tracing::error!("Failed to send LoopMessage::LocalMessage: {e}");
     }
 

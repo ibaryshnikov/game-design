@@ -3,12 +3,12 @@ use std::fmt;
 use bytes::Bytes;
 use futures::sink::{Sink, SinkExt};
 use futures::stream::StreamExt;
+use futures_util::stream::SplitSink;
 use iced_winit::winit::event_loop::EventLoopProxy;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
 use tungstenite::{Error as WsError, Message as WsMessage};
-use futures_util::stream::SplitSink;
 
 use network::client::{self, KeyActionKind, Move};
 use network::server;
@@ -98,7 +98,6 @@ pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
     // let mut maybe_receiver_future = Option<Box::pin(receiver.recv())>;
 
     loop {
-
         tokio::select! {
             maybe_message = websocket.next() => {
                 match maybe_message {
@@ -179,25 +178,9 @@ async fn handle_ws_message(proxy: &EventLoopProxy<UserEvent>, message: WsMessage
         }
         WsMessage::Binary(data) => {
             println!("Got binary data");
-            let m = server::Message::from_slice(&data);
-            match m {
-                server::Message::Test => {
-                    println!("Got server::Message::Test");
-                }
-                server::Message::Update(update) => {
-                    println!("Got Update from server");
-                    match update {
-                        server::Update::Scene(scene) => {
-                            println!("Got Scene update from server");
-                            let event = UserEvent::Message(Box::new(Message::UpdateScene(scene)));
-                            let _ = proxy.send_event(event);
-                        }
-                        other => {
-                            println!("Some other update: {:?}", other);
-                        }
-                    }
-                }
-            }
+            let server_message = Box::new(server::Message::from_slice(&data));
+            let event = UserEvent::Message(Box::new(Message::ServerMessage(server_message)));
+            let _ = proxy.send_event(event);
         }
         other => {
             println!("Got other message: {:?}", other);

@@ -10,7 +10,14 @@ use shared::projectile::Projectile;
 use crate::boss::Boss;
 use crate::hero::Hero;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Mode {
+    Client,
+    Server,
+}
+
 pub struct Scene {
+    pub mode: Mode,
     pub characters: HashMap<u128, Hero>,
     pub npc: Vec<Boss>,
     pub effects: Vec<area::Effect>,
@@ -18,8 +25,9 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn empty() -> Self {
+    pub fn new(mode: Mode) -> Self {
         Self {
+            mode,
             characters: HashMap::new(),
             npc: Vec::new(),
             effects: Vec::new(),
@@ -27,7 +35,7 @@ impl Scene {
         }
     }
     pub fn add_character(&mut self, id: u128) {
-        let hero = Hero::new(Point2::new(250.0, 200.0));
+        let hero = Hero::new(id, Point2::new(250.0, 200.0));
         self.characters.insert(id, hero);
     }
     pub fn to_network(&self) -> server::Scene {
@@ -46,12 +54,15 @@ impl Scene {
         }
         // update npc as well
     }
-    pub fn update(&mut self, dt: u128) {
+    pub fn update(&mut self, dt: u128) -> bool {
         for hero in self.characters.values_mut() {
             hero.update(&mut self.npc, dt);
         }
+        let mut update_event = false;
         for boss in self.npc.iter_mut() {
-            boss.update(&mut self.characters, dt);
+            if boss.update(&mut self.characters, dt, self.mode) {
+                update_event = true;
+            }
         }
         for effect in self.effects.iter_mut() {
             effect.update(dt);
@@ -59,6 +70,7 @@ impl Scene {
         for projectile in self.projectiles.iter_mut() {
             projectile.update(dt);
         }
+        update_event
     }
     pub fn handle_server_message(&mut self, message: server::Message) {
         use server::Message;
@@ -66,12 +78,15 @@ impl Scene {
             Message::Test => {
                 println!("Test message in game-core");
             }
+            Message::SetId(_id) => {
+                // do nothing here
+            }
             Message::Update(update) => {
                 self.handle_server_update(update);
             }
         }
     }
-    fn handle_server_update(&mut self, update: server::Update) {
+    pub fn handle_server_update(&mut self, update: server::Update) {
         use server::Update;
         match update {
             Update::Scene(scene) => {

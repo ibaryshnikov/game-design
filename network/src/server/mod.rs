@@ -37,9 +37,11 @@ pub enum Update {
     Entity,     // some updates related to entities
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Message {
     Test,
+    SetId(u128),
     Update(Update),
 }
 

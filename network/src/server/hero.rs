@@ -10,7 +10,7 @@ use shared::hero::{DashCooldown, DashInfo, Moving};
 // to clients
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Hero {
-    pub id: String,
+    pub id: u128,
     pub hp: i32,
     pub max_hp: i32,
     pub position: Point2<f32>,

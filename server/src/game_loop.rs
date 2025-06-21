@@ -41,14 +41,27 @@ pub async fn game_loop(mut receiver: GameLoopReceiver) {
                 }
             }
             _ = timer() => {
-                stage.update();
+                if stage.update() {
+                    send_scene_to_clients(&stage, &broadcaster_sender).await;
+                }
             }
         }
     }
 }
 
 async fn timer() {
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    time::sleep(Duration::from_millis(10)).await;
+}
+
+async fn send_scene_to_clients(stage: &Stage, broadcaster: &mpsc::Sender<broadcaster::Message>) {
+    let scene = stage.scene.to_network();
+    let server_message = server::Message::Update(server::Update::Scene(scene));
+    let data = server_message.to_vec();
+    let ws_message = WsMessage::Binary(Bytes::from(data));
+    let new_message = broadcaster::Message::SendMessageToAll(ws_message);
+    if let Err(e) = broadcaster.send(new_message).await {
+        println!("Failed to send Scene to broadcaster in game loop: {e}");
+    }
 }
 
 async fn handle_client_message(
@@ -59,15 +72,7 @@ async fn handle_client_message(
 ) {
     println!("Handle message in game loop for {id}");
     stage.scene.handle_client_message(id, message);
-    let scene = stage.scene.to_network();
-    println!("network scene characters len {}", scene.characters.len());
-    let server_message = server::Message::Update(server::Update::Scene(scene));
-    let data = server_message.to_vec();
-    let ws_message = WsMessage::Binary(Bytes::from(data));
-    let new_message = broadcaster::Message::SendMessageToAll(ws_message);
-    if let Err(e) = broadcaster.send(new_message).await {
-        println!("Failed to send message to broadcaster in game loop handle_client_message: {e}");
-    }
+    send_scene_to_clients(stage, broadcaster).await;
 }
 
 async fn handle_local_message(
@@ -87,7 +92,9 @@ async fn handle_local_message(
             let ws_message = WsMessage::Binary(Bytes::from(data));
             let new_message = broadcaster::Message::SendMessageToAll(ws_message);
             if let Err(e) = broadcaster.send(new_message).await {
-                println!("Failed to send message to broadcaster in game loop handle_local_message: {e}");
+                println!(
+                    "Failed to send message to broadcaster in game loop handle_local_message: {e}"
+                );
             }
         }
     }

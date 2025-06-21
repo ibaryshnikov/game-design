@@ -12,7 +12,7 @@ use winit::event_loop::EventLoopProxy;
 
 use game_core::boss::Boss;
 use game_core::hero::Hero;
-use game_core::scene::Scene;
+use game_core::scene::{self, Scene};
 use network::client::{KeyActionKind, Move};
 use network::server;
 use shared::level::{Level, LevelInfo, LevelList};
@@ -90,8 +90,9 @@ impl UiApp {
         let level_list = load_level_list();
         let boss_constructor = load_npc_by_id(1);
         // let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
-        let hero = Hero::new(Point2::new(250.0, 200.0));
-        let scene = Scene::empty();
+        let tmp_id = 0; // will receive a proper one from server when connected
+        let hero = Hero::new(tmp_id, Point2::new(250.0, 200.0));
+        let scene = Scene::new(scene::Mode::Client);
         // let scene = Scene::new(hero.clone(), boss);
         UiApp {
             last_update: Instant::now(),
@@ -120,6 +121,7 @@ impl UiApp {
     }
 }
 
+// update and view
 impl UiApp {
     pub fn update(&mut self, message: Message) {
         self.cache.clear();
@@ -141,7 +143,9 @@ impl UiApp {
                 // do nothing for now
             }
             Message::ServerMessage(m) => {
-                self.scene.handle_server_message(*m);
+                println!("ServerMessage in UiApp update");
+                self.handle_server_message(*m);
+                // self.scene.handle_server_message(*m);
             }
             Message::WsMessage(text) => {
                 println!("Got ws message: {}", text);
@@ -216,6 +220,44 @@ impl UiApp {
     }
 }
 
+// helpers to handle various messages
+impl UiApp {
+    fn handle_server_message(&mut self, message: server::Message) {
+        match message {
+            server::Message::Test => {
+                println!("Got server::Message::Test");
+            }
+            server::Message::SetId(id) => {
+                println!("Got id from server: {}", id);
+                self.hero.id = id;
+            }
+            server::Message::Update(update) => {
+                println!("Got Update message from server");
+                // self.scene.handle_server_update(update);
+                match update {
+                    server::Update::Scene(scene) => {
+                        println!("Got Scene update from server");
+                        for (key, network_character) in scene.characters.into_iter() {
+                            println!("Network character {:?}", network_character);
+                            let character = Hero::from_network(network_character);
+                            if character.id == self.hero.id {
+                                self.hero.position = character.position;
+                            } else {
+                                self.scene.characters.insert(key, character);
+                            }
+                        }
+                        self.scene.npc = scene.npc.into_iter().map(Boss::from_network).collect();
+                    }
+                    other => {
+                        println!("Got some other update: {:?}", other);
+                    }
+                }
+            }
+        }
+        // self.scene.handle_server_message(message);
+    }
+}
+
 impl<Message> canvas::Program<Message> for UiApp {
     type State = ();
 
@@ -236,6 +278,7 @@ impl<Message> canvas::Program<Message> for UiApp {
     }
 }
 
+// methods for drawing
 impl UiApp {
     fn draw_pending(&self) -> Row<Message> {
         let column = column![

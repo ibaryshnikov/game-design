@@ -5,7 +5,7 @@ use nalgebra::Point2;
 
 use game_core::boss::Boss;
 use game_core::hero::Hero;
-use game_core::scene::Scene;
+use game_core::scene::{self, Scene};
 use shared::level::{Level, LevelList};
 use shared::npc::NpcConstructor;
 
@@ -38,6 +38,7 @@ impl Stage {
         let boss_constructor = load_npc_by_id(1);
         let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
         let scene = Scene {
+            mode: scene::Mode::Server,
             characters: HashMap::new(),
             npc: vec![boss],
             effects: Vec::new(),
@@ -59,10 +60,10 @@ impl Stage {
         self.scene.characters.insert(id, hero);
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self) -> bool {
         let now = Instant::now();
         let dt = now.saturating_duration_since(self.last_update).as_millis();
         self.last_update = now;
-        self.scene.update(dt);
+        self.scene.update(dt)
     }
 }

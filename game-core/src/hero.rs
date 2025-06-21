@@ -14,7 +14,7 @@ use crate::boss::Boss;
 
 #[derive(Debug, Clone)]
 pub struct Hero {
-    pub id: String,
+    pub id: u128,
     pub hp: i32,
     max_hp: i32,
     pub position: Point2<f32>,
@@ -48,9 +48,9 @@ fn load_character_settings_by_id(id: u32) -> CharacterSettings {
 }
 
 impl Hero {
-    pub fn new(position: Point2<f32>) -> Self {
+    pub fn new(id: u128, position: Point2<f32>) -> Self {
         Hero {
-            id: String::new(),
+            id,
             hp: 1000,
             max_hp: 1000,
             position,
@@ -75,7 +75,7 @@ impl Hero {
     }
     pub fn to_network(&self) -> server::Hero {
         server::Hero {
-            id: self.id.clone(),
+            id: self.id,
             hp: self.hp,
             max_hp: self.max_hp,
             position: self.position,
@@ -94,7 +94,7 @@ impl Hero {
     }
     pub fn from_network(hero: server::Hero) -> Self {
         Self {
-            id: hero.id.clone(),
+            id: hero.id,
             hp: hero.hp,
             max_hp: hero.max_hp,
             position: hero.position,
