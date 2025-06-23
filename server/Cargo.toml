@@ -14,6 +14,7 @@ rmp-serde = "1.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tower-http = { version = "0.6", features = ["auth", "cors", "fs"] }
+toml = "0.8.23"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.16", features = ["v4"] }

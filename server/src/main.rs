@@ -18,6 +18,7 @@ use network::client;
 use network::server;
 
 mod broadcaster;
+mod config;
 mod game_loop;
 mod npc;
 mod stage;
@@ -32,6 +33,8 @@ struct AppState {
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
+
+    let config = config::Config::read_from_file();
 
     let (sender, receiver) = mpsc::channel(1000);
 
@@ -48,8 +51,8 @@ async fn main() {
         .route("/", routing::get(|| async { "hello from axum\n" }))
         .layer(CorsLayer::new().allow_origin("*".parse::<HeaderValue>().unwrap()))
         .with_state(Arc::new(state));
-    let address = "0.0.0.0:8080";
-    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
+    let address = format!("0.0.0.0:{}", config.port);
+    let listener = tokio::net::TcpListener::bind(&address).await.unwrap();
     println!("listening at {address}");
     axum::serve(listener, app).await.unwrap();
 }
@@ -87,11 +90,7 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
         return;
     }
 
-    let local_message = Box::new(types::LocalMessage::Join);
-    if let Err(e) = sender
-        .send(LoopMessage::LocalMessage(id, local_message))
-        .await
-    {
+    if let Err(e) = sender.send(LoopMessage::Join(id)).await {
         tracing::error!("Failed to send LoopMessage::LocalMessage: {e}");
     }
 
@@ -117,8 +116,7 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
         }
     }
 
-    let message = Box::new(broadcaster::Message::CloseConnection(id));
-    if let Err(e) = sender.send(LoopMessage::Broadcaster(message)).await {
+    if let Err(e) = sender.send(LoopMessage::Leave(id)).await {
         tracing::error!("Failed to send WebSocket message to broadcaster: {e}");
     }
 }

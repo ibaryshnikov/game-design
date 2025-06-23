@@ -34,3 +34,6 @@ path = "../game-core"
 
 [dependencies.network]
 path = "../network"
+
+[dependencies.shared]
+path = "../shared"

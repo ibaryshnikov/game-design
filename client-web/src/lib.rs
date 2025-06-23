@@ -9,6 +9,8 @@ use network::server;
 #[macro_use]
 mod console;
 
+mod attack;
+mod boss;
 mod dom_helpers;
 mod hero;
 mod scene;

@@ -10,7 +10,7 @@ use network::server;
 
 use crate::broadcaster;
 use crate::stage::Stage;
-use crate::types::{GameLoopReceiver, LocalMessage, LoopMessage};
+use crate::types::{GameLoopReceiver, LoopMessage};
 
 pub async fn game_loop(mut receiver: GameLoopReceiver) {
     let mut stage = Stage::new();
@@ -32,8 +32,15 @@ pub async fn game_loop(mut receiver: GameLoopReceiver) {
                         LoopMessage::Client(id, message) => {
                             handle_client_message(&mut stage, id, *message, &broadcaster_sender).await;
                         }
-                        LoopMessage::LocalMessage(id, message) => {
-                            handle_local_message(&mut stage, id, *message, &broadcaster_sender).await;
+                        LoopMessage::Join(id) => {
+                            handle_character_join(&mut stage, id, &broadcaster_sender).await;
+                        }
+                        LoopMessage::Leave(id) => {
+                            let message = broadcaster::Message::CloseConnection(id);
+                            if let Err(e) = broadcaster_sender.send(message).await {
+                                tracing::error!("Failed to send message to broadcaster in game loop: {e}");
+                            }
+                            handle_character_leave(&mut stage, id, &broadcaster_sender).await;
                         }
                     }
                 } else {
@@ -75,27 +82,36 @@ async fn handle_client_message(
     send_scene_to_clients(stage, broadcaster).await;
 }
 
-async fn handle_local_message(
+async fn handle_character_join(
     stage: &mut Stage,
     id: u128,
-    message: LocalMessage,
     broadcaster: &mpsc::Sender<broadcaster::Message>,
 ) {
-    println!("Handle local message in game loop for {id}");
-    match message {
-        LocalMessage::Join => {
-            println!("Got LocalMessage::Join");
-            stage.scene.add_character(id);
-            let scene = stage.scene.to_network();
-            let server_message = server::Message::Update(server::Update::Scene(scene));
-            let data = server_message.to_vec();
-            let ws_message = WsMessage::Binary(Bytes::from(data));
-            let new_message = broadcaster::Message::SendMessageToAll(ws_message);
-            if let Err(e) = broadcaster.send(new_message).await {
-                println!(
-                    "Failed to send message to broadcaster in game loop handle_local_message: {e}"
-                );
-            }
-        }
+    println!("Got LoopMessage::Join");
+    stage.scene.add_character(id);
+    let scene = stage.scene.to_network();
+    let server_message = server::Message::Update(server::Update::Scene(scene));
+    let data = server_message.to_vec();
+    let ws_message = WsMessage::Binary(Bytes::from(data));
+    let new_message = broadcaster::Message::SendMessageToAll(ws_message);
+    if let Err(e) = broadcaster.send(new_message).await {
+        println!("Failed to send message to broadcaster in game loop handle_character_join: {e}");
+    }
+}
+
+async fn handle_character_leave(
+    stage: &mut Stage,
+    id: u128,
+    broadcaster: &mpsc::Sender<broadcaster::Message>,
+) {
+    println!("Got LoopMessage::Leave");
+    stage.scene.remove_character(id);
+    let scene = stage.scene.to_network();
+    let server_message = server::Message::Update(server::Update::Scene(scene));
+    let data = server_message.to_vec();
+    let ws_message = WsMessage::Binary(Bytes::from(data));
+    let new_message = broadcaster::Message::SendMessageToAll(ws_message);
+    if let Err(e) = broadcaster.send(new_message).await {
+        println!("Failed to send message to broadcaster in game loop handle_character_leave: {e}");
     }
 }

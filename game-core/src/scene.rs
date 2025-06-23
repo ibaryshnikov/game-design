@@ -38,6 +38,9 @@ impl Scene {
         let hero = Hero::new(id, Point2::new(250.0, 200.0));
         self.characters.insert(id, hero);
     }
+    pub fn remove_character(&mut self, id: u128) {
+        self.characters.remove(&id);
+    }
     pub fn to_network(&self) -> server::Scene {
         let mut characters = HashMap::new();
         for (key, value) in self.characters.iter() {

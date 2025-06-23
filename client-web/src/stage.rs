@@ -45,8 +45,8 @@ impl Stage {
         let document = get_document(&window)?;
         let body = get_body(&document)?;
 
-        let width = 400;
-        let height = 400;
+        let width = 1000;
+        let height = 750;
 
         let canvas = create_canvas(&document)?;
 
