@@ -1,7 +1,7 @@
 use iced::Element;
 
 use crate::utils::combine;
-use crate::{EditorState, DATA_PATH};
+use crate::{DATA_PATH, EditorState};
 
 const FILE_PREFIX: &str = "attack";
 const FOLDER_NAME: &str = "attack/";

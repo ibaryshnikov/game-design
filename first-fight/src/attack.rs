@@ -1,5 +1,5 @@
 use iced_core::Color;
-use iced_widget::canvas::{self, stroke, Frame, Path, Stroke};
+use iced_widget::canvas::{self, Frame, Path, Stroke, stroke};
 
 use shared::attack::{
     AttackInfo, AttackKind, AttackOrder, AttackSequence, AttackShape, AttackState, ComplexAttack,

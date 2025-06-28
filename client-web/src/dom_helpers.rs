@@ -24,8 +24,7 @@ pub fn create_canvas(document: &Document) -> Result<HtmlCanvasElement, Error> {
         .dyn_into::<HtmlCanvasElement>()
         .map_err(|e| {
             Error::new(&format!(
-                "Can't cast created element to HtmlCanvasElement, {:?}",
-                e
+                "Can't cast created element to HtmlCanvasElement, {e:?}"
             ))
         })
 }
@@ -37,8 +36,7 @@ pub fn get_context(canvas: &HtmlCanvasElement) -> Result<CanvasRenderingContext2
         .dyn_into::<CanvasRenderingContext2d>()
         .map_err(|e| {
             Error::new(&format!(
-                "Can't cast rendering context to WebGlRenderingContext2d, {:?}",
-                e
+                "Can't cast rendering context to WebGlRenderingContext2d, {e:?}"
             ))
         })
 }

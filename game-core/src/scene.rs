@@ -18,6 +18,7 @@ pub enum Mode {
 
 pub struct Scene {
     pub mode: Mode,
+    pub frame_number: u128,
     pub characters: HashMap<u128, Hero>,
     pub npc: Vec<Boss>,
     pub effects: Vec<area::Effect>,
@@ -27,6 +28,7 @@ pub struct Scene {
 impl Scene {
     pub fn new(mode: Mode) -> Self {
         Self {
+            frame_number: 0,
             mode,
             characters: HashMap::new(),
             npc: Vec::new(),
@@ -42,22 +44,35 @@ impl Scene {
         self.characters.remove(&id);
     }
     pub fn to_network(&self) -> server::Scene {
+        let frame_number = self.frame_number;
         let mut characters = HashMap::new();
         for (key, value) in self.characters.iter() {
             characters.insert(*key, value.to_network());
         }
         let npc = self.npc.iter().map(|item| item.to_network()).collect();
-        server::Scene { characters, npc }
+        server::Scene {
+            frame_number,
+            characters,
+            npc,
+        }
     }
     pub fn update_from_network(&mut self, scene: server::Scene) {
+        let frame_number_diff = self.frame_number.saturating_sub(scene.frame_number);
         for (key, network_character) in scene.characters.into_iter() {
-            println!("Network character {:?}", network_character);
-            let character = Hero::from_network(network_character);
+            println!("Network character {network_character:?}");
+            let mut character = Hero::from_network(network_character);
+            if frame_number_diff > 0 {
+                let dt_to_replay = frame_number_diff * 10; // 1 frame is 10ms
+                character.update(&mut self.npc, dt_to_replay);
+            }
             self.characters.insert(key, character);
         }
         // update npc as well
+
+        self.frame_number = scene.frame_number;
     }
     pub fn update(&mut self, dt: u128) -> bool {
+        self.frame_number += 1;
         for hero in self.characters.values_mut() {
             hero.update(&mut self.npc, dt);
         }
@@ -93,13 +108,13 @@ impl Scene {
         use server::Update;
         match update {
             Update::Scene(scene) => {
-                println!("game-core Scene update: {:?}", scene);
+                println!("game-core Scene update: {scene:?}");
             }
             Update::Character(character_update) => {
-                println!("game-core Character update: {:?}", character_update);
+                println!("game-core Character update: {character_update:?}");
             }
             Update::NpcList(npc_list) => {
-                println!("game-core NpcList update: {:?}", npc_list);
+                println!("game-core NpcList update: {npc_list:?}");
             }
             Update::Projectile => {
                 // got projectile update
@@ -120,10 +135,7 @@ impl Scene {
                 println!("Message::Join in game-core scene");
             }
             Message::Move(kind, movement) => {
-                println!(
-                    "Message::Move in game-core scene: {:?} {:?}",
-                    kind, movement
-                );
+                println!("Message::Move in game-core scene: {kind:?} {movement:?}");
 
                 hero.handle_move_action(kind, movement);
             }

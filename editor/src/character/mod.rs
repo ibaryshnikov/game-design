@@ -4,7 +4,7 @@ use iced::{Alignment, Element};
 use shared::character::CharacterSettings;
 
 use crate::utils::combine;
-use crate::{EditorState, DATA_PATH};
+use crate::{DATA_PATH, EditorState};
 
 const FILE_PREFIX: &str = "character";
 const FOLDER_NAME: &str = "character/";

@@ -16,7 +16,7 @@ impl<'a> SceneView<'a> {
     pub fn draw(&self, ctx: &CanvasRenderingContext2d) {
         let scene = &self.scene_info;
         for boss in scene.npc.iter() {
-            BossView::new(boss).draw(&ctx);
+            BossView::new(boss).draw(ctx);
         }
         for hero in scene.characters.values() {
             HeroView::new(hero).draw(ctx);

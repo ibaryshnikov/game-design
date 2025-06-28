@@ -43,7 +43,7 @@ impl Character for Hero {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn load_character_settings_by_id(id: u32) -> CharacterSettings {
-    let file_path = format!("../data/character/character_{}.json", id);
+    let file_path = format!("../data/character/character_{id}.json");
     let contents = std::fs::read(file_path).expect("Should read CharacterSettings from a file");
     serde_json::from_slice(&contents).expect("Should decode CharacterSettings")
 }

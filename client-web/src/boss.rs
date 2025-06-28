@@ -2,7 +2,7 @@ use web_sys::CanvasRenderingContext2d;
 
 use game_core::boss::Boss;
 
-use crate::attack::{AttackView, /*ComplexAttackView*/};
+use crate::attack::{AttackView /*ComplexAttackView*/};
 
 pub struct BossView<'a> {
     pub boss_info: &'a Boss,

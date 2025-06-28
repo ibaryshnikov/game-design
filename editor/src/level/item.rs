@@ -4,7 +4,7 @@ use iced::{Alignment, Element};
 use shared::level::{Level, LevelNpcInfo};
 
 use super::get_item_file_path;
-use crate::npc::list::{load_available_npc_list, NpcInfo};
+use crate::npc::list::{NpcInfo, load_available_npc_list};
 
 pub struct Page {
     id: u32,
@@ -98,7 +98,7 @@ impl Page {
         let mut npc_list = column![].align_x(Alignment::Center).spacing(10);
         for (index, npc_id) in self.data.npc_list.iter().enumerate() {
             let npc_row = row![
-                text(format!("Npc id: {}", npc_id)),
+                text(format!("Npc id: {npc_id}")),
                 button("delete").on_press(Message::RemoveNpc(index)),
             ]
             .spacing(10);

@@ -1,4 +1,4 @@
-use iced::widget::{button, column, container, pick_list, row, text, text_input, Row};
+use iced::widget::{Row, button, column, container, pick_list, row, text, text_input};
 use iced::{Alignment, Element};
 
 use shared::attack::{AttackConstructor, AttackKind, AttackOrder};

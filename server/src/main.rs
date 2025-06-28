@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use axum::body::Bytes;
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::response::IntoResponse;
-use axum::{routing, Router};
+use axum::{Router, routing};
 use futures::sink::SinkExt;
 use futures::stream::StreamExt;
 use http::HeaderValue;
@@ -98,20 +98,20 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
     while let Some(maybe_message) = read.next().await {
         if let Ok(message) = maybe_message {
             match message {
-                Message::Text(text) => println!("Got text message: {}", text),
+                Message::Text(text) => println!("Got text message: {text}"),
                 Message::Binary(data) => {
                     let message = client::Message::from_slice(&data);
-                    println!("Got binary message: {:?}", message);
+                    println!("Got binary message: {message:?}");
                     let result = sender
                         .send(LoopMessage::Client(id, Box::new(message)))
                         .await;
                     if let Err(e) = result {
-                        println!("Error sending message: {:?}", e);
+                        println!("Error sending message: {e:?}");
                         tracing::error!("Error sending message to game loop, receiver is dropped");
                         break;
                     }
                 }
-                other => println!("Got other ws message kind: {:?}", other),
+                other => println!("Got other ws message kind: {other:?}"),
             }
         }
     }

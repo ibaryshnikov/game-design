@@ -3,8 +3,8 @@ use std::time::Instant;
 
 use iced_wgpu::Renderer;
 use iced_widget::canvas::{self, Cache, Canvas, Geometry};
-use iced_widget::{button, column, container, row, text, Row};
-use iced_winit::core::{mouse, Alignment, Element, Length, Rectangle, Theme};
+use iced_widget::{Row, button, column, container, row, text};
+use iced_winit::core::{Alignment, Element, Length, Rectangle, Theme, mouse};
 use iced_winit::winit;
 use nalgebra::Point2;
 use tokio::sync::mpsc;
@@ -20,7 +20,7 @@ use shared::npc::NpcConstructor;
 
 use crate::hero::HeroView;
 use crate::scene::SceneView;
-use crate::{ws, UserEvent};
+use crate::{UserEvent, ws};
 
 #[derive(Debug, Clone)]
 pub enum ServerAction {}
@@ -148,7 +148,7 @@ impl UiApp {
                 // self.scene.handle_server_message(*m);
             }
             Message::WsMessage(text) => {
-                println!("Got ws message: {}", text);
+                println!("Got ws message: {text}");
             }
             Message::Move(kind, movement) => {
                 // println!("Moving: {:?} {:?}", kind, movement);
@@ -228,7 +228,7 @@ impl UiApp {
                 println!("Got server::Message::Test");
             }
             server::Message::SetId(id) => {
-                println!("Got id from server: {}", id);
+                println!("Got id from server: {id}");
                 self.hero.id = id;
             }
             server::Message::Update(update) => {
@@ -238,7 +238,7 @@ impl UiApp {
                     server::Update::Scene(scene) => {
                         println!("Got Scene update from server");
                         for (key, network_character) in scene.characters.into_iter() {
-                            println!("Network character {:?}", network_character);
+                            println!("Network character {network_character:?}");
                             let character = Hero::from_network(network_character);
                             if character.id == self.hero.id {
                                 self.hero.position = character.position;
@@ -249,7 +249,7 @@ impl UiApp {
                         self.scene.npc = scene.npc.into_iter().map(Boss::from_network).collect();
                     }
                     other => {
-                        println!("Got some other update: {:?}", other);
+                        println!("Got some other update: {other:?}");
                     }
                 }
             }

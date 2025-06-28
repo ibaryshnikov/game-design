@@ -3,9 +3,9 @@ use std::thread;
 use std::time::Duration;
 
 use iced_wgpu::graphics::Viewport;
-use iced_wgpu::{wgpu, Engine, Renderer};
+use iced_wgpu::{Engine, Renderer, wgpu};
 use iced_winit::clipboard::Clipboard;
-use iced_winit::core::{mouse, renderer, window, Event, Font, Pixels, Size, Theme};
+use iced_winit::core::{Event, Font, Pixels, Size, Theme, mouse, renderer, window};
 use iced_winit::runtime::user_interface::{self, UserInterface};
 use iced_winit::{conversion, winit};
 use wgpu::{Device, Instance, Queue, TextureFormat};
@@ -447,9 +447,11 @@ fn main() {
     let proxy = event_loop.create_proxy();
 
     let new_proxy = proxy.clone();
-    let _ = thread::spawn(move || loop {
-        thread::sleep(Duration::from_millis(15));
-        let _ = new_proxy.send_event(UserEvent::Tick);
+    let _ = thread::spawn(move || {
+        loop {
+            thread::sleep(Duration::from_millis(15));
+            let _ = new_proxy.send_event(UserEvent::Tick);
+        }
     });
 
     let mut app = App::new(proxy);

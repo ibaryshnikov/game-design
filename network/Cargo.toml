@@ -2,7 +2,7 @@
 name = "network"
 version = "0.1.0"
 authors = ["ibaryshnikov"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 nalgebra = "0.33"

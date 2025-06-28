@@ -1,10 +1,10 @@
-use iced::widget::{button, column, container, pick_list, row, text, Scrollable};
+use iced::widget::{Scrollable, button, column, container, pick_list, row, text};
 use iced::{Alignment, Element};
 
 use shared::npc::{NpcAttackInfo, NpcConstructor};
 
 use super::get_item_file_path;
-use crate::attack::list::{load_available_attack_list, AttackInfo};
+use crate::attack::list::{AttackInfo, load_available_attack_list};
 
 pub struct Page {
     id: u32,
@@ -98,7 +98,7 @@ impl Page {
         let mut attack_list = column![].align_x(Alignment::Center).spacing(10);
         for (index, attack_id) in self.data.attacks.iter().enumerate() {
             let attack_row = row![
-                text(format!("Attack id: {}", attack_id)),
+                text(format!("Attack id: {attack_id}")),
                 button("delete").on_press(Message::RemoveAttack(index)),
             ]
             .spacing(10);

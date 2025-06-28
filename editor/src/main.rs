@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 
-use iced::widget::{button, column, container, row, Button, Space};
-use iced::{window, Alignment, Element, Length, Renderer, Settings, Task, Theme};
+use iced::widget::{Button, Space, button, column, container, row};
+use iced::{Alignment, Element, Length, Renderer, Settings, Task, Theme, window};
 use iced_widget::graphics::{self, compositor};
 use iced_winit::Program;
 
@@ -76,7 +76,7 @@ impl EditorKind {
 
 impl Display for EditorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

@@ -22,6 +22,7 @@ pub struct CharacterUpdate {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Scene {
+    pub frame_number: u128,
     pub characters: HashMap<u128, Hero>,
     pub npc: Vec<Boss>,
 }

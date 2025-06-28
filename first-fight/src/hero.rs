@@ -1,5 +1,5 @@
 use iced_core::{Color, Size};
-use iced_widget::canvas::{stroke, Frame, Path, Stroke};
+use iced_widget::canvas::{Frame, Path, Stroke, stroke};
 
 use game_core::hero::Hero;
 

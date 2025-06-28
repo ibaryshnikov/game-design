@@ -38,6 +38,7 @@ impl Stage {
         let boss_constructor = load_npc_by_id(1);
         let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
         let scene = Scene {
+            frame_number: 0,
             mode: scene::Mode::Server,
             characters: HashMap::new(),
             npc: vec![boss],
