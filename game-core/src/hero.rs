@@ -29,7 +29,7 @@ pub struct Hero {
     pub dashing: Option<DashInfo>,
     dash_cooldown: Option<DashCooldown>,
     pub action: Option<Action>,
-    character_settings: CharacterSettings,
+    pub character_settings: CharacterSettings,
 }
 
 impl Character for Hero {

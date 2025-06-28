@@ -135,15 +135,16 @@ impl Scene {
                 println!("Message::Join in game-core scene");
             }
             Message::Move(kind, movement) => {
-                println!("Message::Move in game-core scene: {kind:?} {movement:?}");
-
+                // println!("Message::Move in game-core scene: {kind:?} {movement:?}");
                 hero.handle_move_action(kind, movement);
             }
             Message::HeroDash => {
-                println!("Message::HeroDash in game-core scene");
+                // println!("Message::HeroDash in game-core scene");
+                hero.dash();
             }
             Message::HeroAttack => {
-                println!("Message::HeroAttack in game-core scene");
+                // println!("Message::HeroAttack in game-core scene");
+                hero.check_attack();
             }
         }
     }

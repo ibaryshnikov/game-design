@@ -16,12 +16,13 @@ impl<'a> HeroView<'a> {
         ctx.set_fill_style_str("black");
         self.draw_body(ctx);
         self.draw_direction(ctx);
-        // self.draw_attack(ctx);
+        self.draw_attack(ctx);
         self.draw_health_bar(ctx);
     }
     fn draw_body(&self, ctx: &CanvasRenderingContext2d) {
         if let Some(dash_info) = &self.hero_info.dashing {
             let percent_completed = dash_info.percent_completed();
+            console_log!("percent_completed is {percent_completed}");
             let x = self.hero_info.position.x + dash_info.direction.x * 150.0 * percent_completed;
             let y = self.hero_info.position.y + dash_info.direction.y * 150.0 * percent_completed;
             ctx.set_stroke_style_str("black");

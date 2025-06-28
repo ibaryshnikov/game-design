@@ -58,7 +58,9 @@ impl Stage {
         let ctx = get_context(&canvas)?;
 
         let tmp_id = 0; // will receive a proper one from server when connected
-        let hero = Hero::new(tmp_id, Point2::new(250.0, 200.0));
+        let mut hero = Hero::new(tmp_id, Point2::new(250.0, 200.0));
+        hero.character_settings.dash_duration = 100;
+        hero.character_settings.dash_distance = 150;
         let scene = Scene::new(scene::Mode::Client);
 
         Ok(Stage {
@@ -118,55 +120,39 @@ impl Stage {
             "KeyD" => Move::Right,
             "ShiftLeft" | "ShiftRight" => {
                 if let KeyActionKind::Pressed = kind {
-                    // return ui_app::Message::HeroDash;
+                    self.hero.dash();
+                    let message = client::Message::HeroDash;
+                    self.send_client_message(message);
+                    self.state_changed = true;
                 }
                 return;
-                // return ui_app::Message::None;
             }
             "Space" => {
                 if let KeyActionKind::Pressed = kind {
-                    // return ui_app::Message::HeroAttack;
+                    self.hero.check_attack();
+                    let message = client::Message::HeroAttack;
+                    self.send_client_message(message);
+                    self.state_changed = true;
                 }
                 return;
-                // return ui_app::Message::None;
             }
             _ => {
                 return;
-                //return ui_app::Message::None,
             }
         };
         self.handle_move_action(kind, action);
-        // let kind = match event.state {
-        //     ElementState::Pressed => client::KeyActionKind::Pressed,
-        //     ElementState::Released => client::KeyActionKind::Released,
-        // };
-        //
-        // match (code, direction) {
-        //     ("ArrowLeft", Down) => {
-        //         console_log!("ArrowLeft pressed");
-        //     }
-        //     ("ArrowRight", Down) => {
-        //         console_log!("ArrowRight pressed");
-        //     }
-        //     ("ArrowLeft", Up) => {
-        //         console_log!("ArrowLeft released");
-        //     }
-        //     ("ArrowRight", Up) => {
-        //         console_log!("ArrowRight released");
-        //     }
-        //     ("Space", Down) => {
-        //         console_log!("Space pressed");
-        //     }
-        //     _ => (),
-        // }
     }
 
     fn handle_move_action(&mut self, kind: KeyActionKind, movement: Move) {
         self.hero.handle_move_action(kind.clone(), movement.clone());
         let message = client::Message::Move(kind, movement);
+        self.send_client_message(message);
+        self.state_changed = true;
+    }
+
+    fn send_client_message(&self, message: client::Message) {
         let bytes = Bytes::from(message.to_vec());
         self.send_to_server(&bytes);
-        self.state_changed = true;
     }
 
     fn send_to_server(&self, data: &[u8]) {
@@ -194,13 +180,13 @@ impl Stage {
                 self.hero.id = id;
             }
             server::Message::Update(update) => {
-                console_log!("Got Update message from server");
+                // console_log!("Got Update message from server");
                 // self.scene.handle_server_update(update);
                 match update {
                     server::Update::Scene(scene) => {
-                        console_log!("Got Scene update from server");
+                        // console_log!("Got Scene update from server");
                         for (key, network_character) in scene.characters.into_iter() {
-                            console_log!("Network character {:?}", network_character);
+                            // console_log!("Network character {:?}", network_character);
                             let character = Hero::from_network(network_character);
                             if character.id == self.hero.id {
                                 self.hero.position = character.position;
@@ -208,7 +194,7 @@ impl Stage {
                                 self.scene.characters.insert(key, character);
                             }
                         }
-                        console_log!("New position: {:?}", self.hero.position);
+                        // console_log!("New position: {:?}", self.hero.position);
                         self.scene.npc = scene.npc.into_iter().map(Boss::from_network).collect();
                     }
                     other => {
