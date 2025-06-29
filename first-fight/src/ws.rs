@@ -26,6 +26,7 @@ pub enum LocalMessage {
     Move(KeyActionKind, Move),
     HeroDash,
     HeroAttack,
+    RequestFrameNumber,
 }
 
 impl LocalMessage {
@@ -61,6 +62,7 @@ impl fmt::Display for LocalMessage {
             },
             LocalMessage::HeroDash => write!(f, "HeroDash"),
             LocalMessage::HeroAttack => write!(f, "HeroAttack"),
+            LocalMessage::RequestFrameNumber => write!(f, "RequestFrameNumber"),
         }
     }
 }
@@ -102,7 +104,7 @@ pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
             maybe_message = websocket.next() => {
                 match maybe_message {
                     Some(Ok(message)) => {
-                        println!("Gow websocket message");
+                        // println!("Got websocket message");
                         handle_ws_message(&proxy, message).await;
                     }
                     Some(Err(e)) => {
@@ -119,7 +121,7 @@ pub async fn connect(proxy: EventLoopProxy<UserEvent>) {
             }
             maybe_message = receiver.recv() => {
                 if let Some(message) = maybe_message {
-                    println!("Got local message in ws: {message:?}");
+                    // println!("Got local message in ws: {message:?}");
                     handle_local_message(&mut websocket, message).await;
                 } else {
                     println!("Ws channel has been closed");
@@ -141,7 +143,7 @@ type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 async fn handle_local_message(websocket: &mut WebSocket, message: LocalMessage) {
     match message {
         LocalMessage::Move(kind, movement) => {
-            println!("Local message Move kind {kind:?}: {movement:?}");
+            // println!("Local message Move kind {kind:?}: {movement:?}");
             let message = client::Message::Move(kind, movement);
             let bytes = Bytes::from(message.to_vec());
             let ws_message = WsMessage::Binary(bytes);
@@ -150,7 +152,7 @@ async fn handle_local_message(websocket: &mut WebSocket, message: LocalMessage) 
             }
         }
         LocalMessage::HeroDash => {
-            println!("Local message HeroDash");
+            // println!("Local message HeroDash");
             let message = client::Message::HeroDash;
             let bytes = Bytes::from(message.to_vec());
             let ws_message = WsMessage::Binary(bytes);
@@ -159,8 +161,16 @@ async fn handle_local_message(websocket: &mut WebSocket, message: LocalMessage) 
             }
         }
         LocalMessage::HeroAttack => {
-            println!("Local message HeroAttack");
+            // println!("Local message HeroAttack");
             let message = client::Message::HeroAttack;
+            let bytes = Bytes::from(message.to_vec());
+            let ws_message = WsMessage::Binary(bytes);
+            if let Err(e) = websocket.send(ws_message).await {
+                println!("Error sending WsMessage: {e:?}");
+            }
+        }
+        LocalMessage::RequestFrameNumber => {
+            let message = client::Message::RequestFrameNumber;
             let bytes = Bytes::from(message.to_vec());
             let ws_message = WsMessage::Binary(bytes);
             if let Err(e) = websocket.send(ws_message).await {
@@ -177,7 +187,7 @@ async fn handle_ws_message(proxy: &EventLoopProxy<UserEvent>, message: WsMessage
             println!("Got text message: {text}");
         }
         WsMessage::Binary(data) => {
-            println!("Got binary data");
+            // println!("Got binary data");
             let server_message = Box::new(server::Message::from_slice(&data));
             let event = UserEvent::Message(Box::new(Message::ServerMessage(server_message)));
             let _ = proxy.send_event(event);
@@ -218,6 +228,10 @@ where
             LocalMessage::HeroAttack => {
                 println!("Local message HeroAttack");
                 let client_message = client::Message::HeroAttack;
+                send_client_message(&mut write_half, client_message).await;
+            }
+            LocalMessage::RequestFrameNumber => {
+                let client_message = client::Message::RequestFrameNumber;
                 send_client_message(&mut write_half, client_message).await;
             }
             other => println!("Got some other message in ws subscription: {other:?}"),

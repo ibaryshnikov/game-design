@@ -50,7 +50,7 @@ async fn handle_message(writers: &mut HashMap<u128, Writer>, message: Message) {
         }
         SendMessageToAll(message) => {
             for (id, writer) in writers.iter_mut() {
-                println!("Sending message in broadcaster to {id}");
+                // println!("Sending message in broadcaster to {id}");
                 if let Err(e) = writer.send(message.clone()).await {
                     tracing::error!("Failed to send WebSocket message to id {id}: {e}");
                 }

@@ -65,6 +65,8 @@ pub struct UiApp {
     ws_sender: Option<mpsc::Sender<ws::LocalMessage>>,
     level_list: LevelList,
     selected_level: Option<LevelInfo>,
+    last_frame_request: Instant,
+    frames_passed_since_request: u128,
 }
 
 fn load_npc_by_id(id: u32) -> NpcConstructor {
@@ -106,6 +108,8 @@ impl UiApp {
             ws_sender: None,
             level_list,
             selected_level: None,
+            last_frame_request: Instant::now(),
+            frames_passed_since_request: 0,
         }
     }
     fn load_level(&mut self, id: u32) {
@@ -143,7 +147,7 @@ impl UiApp {
                 // do nothing for now
             }
             Message::ServerMessage(m) => {
-                println!("ServerMessage in UiApp update");
+                // println!("ServerMessage in UiApp update");
                 self.handle_server_message(*m);
                 // self.scene.handle_server_message(*m);
             }
@@ -175,6 +179,17 @@ impl UiApp {
                 self.last_update = now;
                 self.hero.update_visuals(dt);
                 self.scene.update(dt);
+
+                self.frames_passed_since_request += 1;
+
+                // request frame number every second
+                if self.last_frame_request.elapsed().as_secs() > 0 {
+                    self.last_frame_request = Instant::now();
+                    self.frames_passed_since_request = 0;
+                    if let Some(sender) = &mut self.ws_sender {
+                        let _ = sender.try_send(ws::LocalMessage::RequestFrameNumber);
+                    }
+                }
                 // if self.scene.characters.values().all(|hero| hero.defeated()) {
                 //     self.state = FightState::Loss;
                 //     self.scene.stop();
@@ -231,14 +246,18 @@ impl UiApp {
                 println!("Got id from server: {id}");
                 self.hero.id = id;
             }
+            server::Message::ResponseFrameNumber(number) => {
+                self.scene.frame_number = number + self.frames_passed_since_request / 2;
+                self.frames_passed_since_request = 0;
+            }
             server::Message::Update(update) => {
-                println!("Got Update message from server");
+                // println!("Got Update message from server");
                 // self.scene.handle_server_update(update);
                 match update {
                     server::Update::Scene(scene) => {
-                        println!("Got Scene update from server");
+                        // println!("Got Scene update from server");
                         for (key, network_character) in scene.characters.into_iter() {
-                            println!("Network character {network_character:?}");
+                            // println!("Network character {network_character:?}");
                             let character = Hero::from_network(network_character);
                             if character.id == self.hero.id {
                                 self.hero.position = character.position;

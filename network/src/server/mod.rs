@@ -43,6 +43,7 @@ pub enum Update {
 pub enum Message {
     Test,
     SetId(u128),
+    ResponseFrameNumber(u128),
     Update(Update),
 }
 

@@ -101,7 +101,7 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
                 Message::Text(text) => println!("Got text message: {text}"),
                 Message::Binary(data) => {
                     let message = client::Message::from_slice(&data);
-                    println!("Got binary message: {message:?}");
+                    // println!("Got binary message: {message:?}");
                     let result = sender
                         .send(LoopMessage::Client(id, Box::new(message)))
                         .await;

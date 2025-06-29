@@ -37,6 +37,8 @@ pub struct Stage {
     scene: Scene,
     last_update: u128,
     pub state_changed: bool,
+    last_frame_request: u128,
+    frames_passed_since_request: u128,
 }
 
 impl Stage {
@@ -75,6 +77,8 @@ impl Stage {
             scene,
             last_update: Date::now() as u128,
             state_changed: true,
+            last_frame_request: Date::now() as u128,
+            frames_passed_since_request: 0,
         })
     }
 
@@ -168,6 +172,15 @@ impl Stage {
         self.hero.update_visuals(dt);
         self.scene.update(dt);
         self.state_changed = true;
+
+        self.frames_passed_since_request += 1;
+
+        // request frame number every second
+        if now - self.last_frame_request > 1000 {
+            self.last_frame_request = Date::now() as u128;
+            self.frames_passed_since_request = 0;
+            self.send_client_message(client::Message::RequestFrameNumber);
+        }
     }
 
     pub fn handle_server_message(&mut self, message: server::Message) {
@@ -176,8 +189,13 @@ impl Stage {
                 console_log!("Got server::Message::Test");
             }
             server::Message::SetId(id) => {
-                console_log!("Got id from server: {}", id);
+                console_log!("Got id from server: {id}");
                 self.hero.id = id;
+            }
+            server::Message::ResponseFrameNumber(number) => {
+                console_log!("Got frame number from server: {number}");
+                self.scene.frame_number = number + self.frames_passed_since_request / 2;
+                self.frames_passed_since_request = 0;
             }
             server::Message::Update(update) => {
                 // console_log!("Got Update message from server");
@@ -185,9 +203,16 @@ impl Stage {
                 match update {
                     server::Update::Scene(scene) => {
                         // console_log!("Got Scene update from server");
+                        let frame_number_diff =
+                            self.scene.frame_number.saturating_sub(scene.frame_number);
+
                         for (key, network_character) in scene.characters.into_iter() {
                             // console_log!("Network character {:?}", network_character);
-                            let character = Hero::from_network(network_character);
+                            let mut character = Hero::from_network(network_character);
+                            for _ in 0..frame_number_diff {
+                                let dt_to_replay = 10; // 1 frame is 10ms
+                                character.update(&mut self.scene.npc, dt_to_replay);
+                            }
                             if character.id == self.hero.id {
                                 self.hero.position = character.position;
                             } else {

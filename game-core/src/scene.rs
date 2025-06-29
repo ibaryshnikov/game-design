@@ -61,15 +61,15 @@ impl Scene {
         for (key, network_character) in scene.characters.into_iter() {
             println!("Network character {network_character:?}");
             let mut character = Hero::from_network(network_character);
-            if frame_number_diff > 0 {
-                let dt_to_replay = frame_number_diff * 10; // 1 frame is 10ms
+            for _ in 0..frame_number_diff {
+                let dt_to_replay = 10; // 1 frame is 10ms
                 character.update(&mut self.npc, dt_to_replay);
             }
             self.characters.insert(key, character);
         }
         // update npc as well
 
-        self.frame_number = scene.frame_number;
+        // self.frame_number = scene.frame_number;
     }
     pub fn update(&mut self, dt: u128) -> bool {
         self.frame_number += 1;
@@ -98,6 +98,9 @@ impl Scene {
             }
             Message::SetId(_id) => {
                 // do nothing here
+            }
+            Message::ResponseFrameNumber(_number) => {
+                // do nothing yet
             }
             Message::Update(update) => {
                 self.handle_server_update(update);
@@ -145,6 +148,9 @@ impl Scene {
             Message::HeroAttack => {
                 // println!("Message::HeroAttack in game-core scene");
                 hero.check_attack();
+            }
+            Message::RequestFrameNumber => {
+                // do nothing
             }
         }
     }

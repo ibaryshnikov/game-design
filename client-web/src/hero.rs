@@ -22,7 +22,7 @@ impl<'a> HeroView<'a> {
     fn draw_body(&self, ctx: &CanvasRenderingContext2d) {
         if let Some(dash_info) = &self.hero_info.dashing {
             let percent_completed = dash_info.percent_completed();
-            console_log!("percent_completed is {percent_completed}");
+            // console_log!("percent_completed is {percent_completed}");
             let x = self.hero_info.position.x + dash_info.direction.x * 150.0 * percent_completed;
             let y = self.hero_info.position.y + dash_info.direction.y * 150.0 * percent_completed;
             ctx.set_stroke_style_str("black");

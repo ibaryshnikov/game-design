@@ -20,6 +20,7 @@ pub enum Message {
     Move(KeyActionKind, Move),
     HeroDash,
     HeroAttack,
+    RequestFrameNumber,
 }
 
 impl Message {

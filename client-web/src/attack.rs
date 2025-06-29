@@ -89,7 +89,14 @@ impl<'a> AttackView<'a> {
 
         ctx.set_stroke_style_str("green");
         ctx.begin_path();
-        circle_segment(ctx, start_x, start_y, radius, start_angle as f64, end_angle as f64);
+        circle_segment(
+            ctx,
+            start_x,
+            start_y,
+            radius,
+            start_angle as f64,
+            end_angle as f64,
+        );
         ctx.stroke();
     }
     fn draw_selected_circle(&self, ctx: &CanvasRenderingContext2d) {
@@ -130,12 +137,26 @@ impl<'a> AttackView<'a> {
         let (start_angle, end_angle) = info.get_angles(angle, width_radian);
         let start_x = info.position.x as f64;
         let start_y = info.position.y as f64;
-        draw_circle_segment(ctx, start_x, start_y, radius, start_angle as f64, end_angle as f64);
+        draw_circle_segment(
+            ctx,
+            start_x,
+            start_y,
+            radius,
+            start_angle as f64,
+            end_angle as f64,
+        );
 
         if let AttackOrder::SidesToCenter = info.order {
             let end_angle = angle + width_radian;
             let start_angle = end_angle - width_radian * info.percent_completed;
-            draw_circle_segment(ctx, start_x, start_y, radius, start_angle as f64, end_angle as f64);
+            draw_circle_segment(
+                ctx,
+                start_x,
+                start_y,
+                radius,
+                start_angle as f64,
+                end_angle as f64,
+            );
         }
     }
     fn draw_two_parts(&self, ctx: &CanvasRenderingContext2d) {
@@ -149,17 +170,38 @@ impl<'a> AttackView<'a> {
         if info.percent_completed < 0.5 {
             let start_angle = angle - width_radian;
             let end_angle = start_angle + 2.0 * width_radian * info.percent_completed;
-            draw_circle_segment(ctx, start_x, start_y, radius, start_angle as f64, end_angle as f64);
+            draw_circle_segment(
+                ctx,
+                start_x,
+                start_y,
+                radius,
+                start_angle as f64,
+                end_angle as f64,
+            );
         } else {
             // draw first part
             let start_angle = angle - width_radian;
             let end_angle = angle;
-            draw_circle_segment(ctx, start_x, start_y, radius, start_angle as f64, end_angle as f64);
+            draw_circle_segment(
+                ctx,
+                start_x,
+                start_y,
+                radius,
+                start_angle as f64,
+                end_angle as f64,
+            );
 
             // draw second part
             let end_angle = angle + width_radian;
             let start_angle = end_angle - 2.0 * width_radian * (info.percent_completed - 0.5);
-            draw_circle_segment(ctx, start_x, start_y, radius, start_angle as f64, end_angle as f64);
+            draw_circle_segment(
+                ctx,
+                start_x,
+                start_y,
+                radius,
+                start_angle as f64,
+                end_angle as f64,
+            );
         }
     }
     fn draw_attacking_circle(&self, ctx: &CanvasRenderingContext2d) {
@@ -185,7 +227,7 @@ fn draw_circle_segment(
 ) {
     ctx.set_fill_style_str("red");
     ctx.begin_path();
-    circle_segment(&ctx, center_x, center_y, radius, start_angle, end_angle);
+    circle_segment(ctx, center_x, center_y, radius, start_angle, end_angle);
     ctx.fill();
 }
 

@@ -77,9 +77,19 @@ async fn handle_client_message(
     message: client::Message,
     broadcaster: &mpsc::Sender<broadcaster::Message>,
 ) {
-    println!("Handle message in game loop for {id}");
-    stage.scene.handle_client_message(id, message);
-    send_scene_to_clients(stage, broadcaster).await;
+    // println!("Handle message in game loop for {id}");
+    if let client::Message::RequestFrameNumber = message {
+        let server_message = server::Message::ResponseFrameNumber(stage.scene.frame_number);
+        let data = server_message.to_vec();
+        let ws_message = WsMessage::Binary(Bytes::from(data));
+        let new_message = broadcaster::Message::SendMessage(id, ws_message);
+        if let Err(e) = broadcaster.send(new_message).await {
+            println!("Failed to send Scene to broadcaster in game loop: {e}");
+        }
+    } else {
+        stage.scene.handle_client_message(id, message);
+        send_scene_to_clients(stage, broadcaster).await;
+    }
 }
 
 async fn handle_character_join(
