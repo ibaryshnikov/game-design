@@ -15,39 +15,50 @@ impl<'a> BossView<'a> {
     pub fn draw(&self, ctx: &CanvasRenderingContext2d) {
         self.draw_body(ctx);
         self.draw_attack(ctx);
+        // self.draw_small_hp_bar(ctx);
         // self.draw_health_bar(ctx);
     }
     pub fn draw_body(&self, ctx: &CanvasRenderingContext2d) {
-        let x = self.boss_info.position.x as f64;
-        let y = self.boss_info.position.y as f64;
+        let info = &self.boss_info;
+        let x = info.position.x as f64;
+        let y = info.position.y as f64;
 
         ctx.set_stroke_style_str("black");
         ctx.begin_path();
-        let _ = ctx.arc(x, y, 30.0, 0.0, 2.0 * std::f64::consts::PI);
+        let _ = ctx.arc(x, y, info.size as f64, 0.0, 2.0 * std::f64::consts::PI);
         ctx.stroke();
     }
-    // pub fn draw_health_bar(&self, ctx: &CanvasRenderingContext2d) {
-    //     let start = iced_core::Point::new(100.0, 700.0);
-    //     let bar_width = 800.0;
-    //     let bar_height = 10.0;
-    //
-    //     // draw black background
-    //     let path = Path::new(|b| {
-    //         let size = Size::new(bar_width, bar_height);
-    //         b.rectangle(start, size);
-    //     });
-    //
-    //     ctx.fill(&path, Color::from_rgb8(0, 0, 0));
-    //
-    //     // draw hp left as green
-    //     let path = Path::new(|b| {
-    //         let width = bar_width * self.boss_info.hp_left_percent();
-    //         let size = Size::new(width, bar_height);
-    //         b.rectangle(start, size);
-    //     });
-    //
-    //     ctx.fill(&path, Color::from_rgb8(255, 0, 0));
-    // }
+    pub fn draw_small_hp_bar(&self, ctx: &CanvasRenderingContext2d) {
+        let info = &self.boss_info;
+        let x = info.position.x - info.size;
+        let y = info.position.y - 50.0;
+        let bar_width = 60.0;
+        let bar_height = 8.0;
+        ctx.set_fill_style_str("red");
+        ctx.fill_rect(x as f64, y as f64, bar_width, bar_height);
+        ctx.set_fill_style_str("green");
+        // console_log!("boss hp {} max hp {}", info.hp, info.max_hp);
+        // console_log!("boss hp left percent {}", info.hp_left_percent());
+        let width = bar_width * info.hp_left_percent() as f64;
+        ctx.fill_rect(x as f64, y as f64, width, bar_height);
+    }
+    pub fn draw_hp_bar(&self, ctx: &CanvasRenderingContext2d) {
+        let info = self.boss_info;
+
+        let x = 100.0;
+        let y = 700.0;
+        let bar_width = 800.0;
+        let bar_height = 10.0;
+
+        // draw red background
+        ctx.set_fill_style_str("red");
+        ctx.fill_rect(x, y, bar_width, bar_height);
+
+        // draw hp left as green
+        ctx.set_fill_style_str("green");
+        let width = bar_width * self.boss_info.hp_left_percent() as f64;
+        ctx.fill_rect(x, y, width, bar_height);
+    }
     pub fn draw_attack(&self, ctx: &CanvasRenderingContext2d) {
         if let Some(attack_info) = &self.boss_info.attacking {
             let attack_view = AttackView::new(attack_info);

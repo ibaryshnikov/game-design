@@ -1,5 +1,6 @@
 {
   "name": "Second boss",
+  "respawn_time": 10,
   "attacks": [
     {
       "id": 2,

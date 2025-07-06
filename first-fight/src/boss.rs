@@ -16,12 +16,13 @@ impl<'a> BossView<'a> {
     pub fn draw(&self, frame: &mut Frame) {
         self.draw_body(frame);
         self.draw_attack(frame);
-        self.draw_health_bar(frame);
+        // self.draw_health_bar(frame);
     }
     pub fn draw_body(&self, frame: &mut Frame) {
-        let position = iced_core::Point::new(self.boss_info.position.x, self.boss_info.position.y);
+        let info = &self.boss_info;
+        let position = iced_core::Point::new(info.position.x, info.position.y);
         let path = Path::new(|b| {
-            b.circle(position, 30.0);
+            b.circle(position, info.size);
         });
         frame.stroke(
             &path,
@@ -32,7 +33,31 @@ impl<'a> BossView<'a> {
             },
         );
     }
-    pub fn draw_health_bar(&self, frame: &mut Frame) {
+    pub fn draw_small_hp_bar(&self, frame: &mut Frame) {
+        let info = &self.boss_info;
+        let start = iced_core::Point::new(info.position.x - info.size, info.position.y - 50.0);
+        let bar_width = 60.0;
+        let bar_height = 8.0;
+
+        // draw red background
+        let path = Path::new(|b| {
+            let size = Size::new(bar_width, bar_height);
+            b.rectangle(start, size);
+        });
+        frame.fill(&path, Color::from_rgb8(255, 0, 0));
+
+        // draw hp left as green
+        let path = Path::new(|b| {
+            let width = bar_width * info.hp_left_percent();
+            let size = Size::new(width, bar_height);
+            b.rectangle(start, size);
+        });
+
+        frame.fill(&path, Color::from_rgb8(0, 255, 0));
+    }
+    pub fn draw_hp_bar(&self, frame: &mut Frame) {
+        let info = &self.boss_info;
+
         let start = iced_core::Point::new(100.0, 700.0);
         let bar_width = 800.0;
         let bar_height = 10.0;
@@ -47,7 +72,7 @@ impl<'a> BossView<'a> {
 
         // draw hp left as green
         let path = Path::new(|b| {
-            let width = bar_width * self.boss_info.hp_left_percent();
+            let width = bar_width * info.hp_left_percent();
             let size = Size::new(width, bar_height);
             b.rectangle(start, size);
         });

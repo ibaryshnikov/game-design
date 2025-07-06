@@ -17,11 +17,12 @@ pub fn check_hit(
     attack_info: &AttackInfo,
     attack_distance: f32,
     target_position: Point2<f32>,
+    target_radius: f32,
 ) -> bool {
     use AttackKind::*;
     match attack_info.kind {
-        Pizza => check_hit_arc(attack_info, attack_distance, target_position),
-        Circle => check_hit_circle(attack_info, attack_distance, target_position),
+        Pizza => check_hit_arc(attack_info, attack_distance, target_position, target_radius),
+        Circle => check_hit_circle(attack_info, attack_distance, target_position, target_radius),
     }
 }
 
@@ -29,19 +30,25 @@ pub fn check_hit_circle(
     attack_info: &AttackInfo,
     attack_distance: f32,
     target_position: Point2<f32>,
+    target_radius: f32,
 ) -> bool {
     let dx = attack_info.position.x - target_position.x;
     let dy = attack_info.position.y - target_position.y;
     let dd = (dx * dx + dy * dy).sqrt();
-    dd < attack_distance + 20.0
+    dd < attack_distance + target_radius
 }
 
 pub fn check_hit_arc(
     attack_info: &AttackInfo,
     attack_distance: f32,
     target_position: Point2<f32>,
+    target_radius: f32,
 ) -> bool {
     let angle = attack_info.get_base_angle();
+
+    // if attack_distance < 110.0 {
+    //     println!("attack distance {attack_distance}, target_radius: {target_radius}");
+    // }
 
     let dx = attack_info.position.x - target_position.x;
     let dy = attack_info.position.y - target_position.y;
@@ -50,9 +57,18 @@ pub fn check_hit_arc(
     let width_radian = attack_info.width_radian();
     let (start_angle, end_angle) = attack_info.get_angles(angle, width_radian);
 
+    // if attack_distance < 110.0 {
+    //     println!(
+    //         "direction_angle {direction_angle}, start_angle {start_angle}, end_angle {end_angle}"
+    //     );
+    // }
+
     if direction_angle > start_angle && direction_angle < end_angle {
         let dd = (dx * dx + dy * dy).sqrt();
-        return dd < attack_distance + 20.0;
+        // if attack_distance < 110.0 {
+        //     println!("dd {dd}");
+        // }
+        return dd < attack_distance + target_radius;
     }
 
     let point_a = attack_info.position;
@@ -65,9 +81,8 @@ pub fn check_hit_arc(
         point_a.y + attack_distance * end_angle.sin(),
     );
 
-    let radius = 20.0;
     // hero position at the moment of attack completion
-    check_points_with_circle(point_a, point_b, point_c, target_position, radius)
+    check_points_with_circle(point_a, point_b, point_c, target_position, target_radius)
 }
 
 fn check_points_with_circle(

@@ -295,7 +295,7 @@ impl ApplicationHandler<UserEvent> for App {
                             renderer,
                         );
 
-                        let _ = interface.update(
+                        let (state, _) = interface.update(
                             &[Event::Window(window::Event::RedrawRequested(
                                 std::time::Instant::now(),
                             ))],
@@ -305,20 +305,24 @@ impl ApplicationHandler<UserEvent> for App {
                             &mut Vec::new(),
                         );
 
-                        let mouse_interaction = interface.draw(
+                        if let user_interface::State::Updated {
+                            mouse_interaction, ..
+                        } = state
+                        {
+                            window.set_cursor(conversion::mouse_interaction(mouse_interaction));
+                        }
+
+                        interface.draw(
                             renderer,
                             &Theme::Ferra,
                             &renderer::Style::default(),
                             self.cursor,
                         );
-
                         self.cache = interface.into_cache();
 
                         renderer.present(None, frame.texture.format(), &view, &app_data.viewport);
 
                         frame.present();
-
-                        window.set_cursor(conversion::mouse_interaction(mouse_interaction));
                     }
                     Err(error) => match error {
                         wgpu::SurfaceError::OutOfMemory => {

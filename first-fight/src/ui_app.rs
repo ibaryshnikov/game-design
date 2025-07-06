@@ -256,11 +256,13 @@ impl UiApp {
                 match update {
                     server::Update::Scene(scene) => {
                         // println!("Got Scene update from server");
+                        self.scene.characters.clear();
                         for (key, network_character) in scene.characters.into_iter() {
                             // println!("Network character {network_character:?}");
                             let character = Hero::from_network(network_character);
                             if character.id == self.hero.id {
                                 self.hero.position = character.position;
+                                self.hero.hp = character.hp;
                             } else {
                                 self.scene.characters.insert(key, character);
                             }
@@ -289,8 +291,14 @@ impl<Message> canvas::Program<Message> for UiApp {
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
-            HeroView::new(&self.hero).draw(frame);
-            SceneView::new(&self.scene).draw(frame);
+            let hero_view = HeroView::new(&self.hero);
+            hero_view.draw(frame);
+            if crate::scene::DRAW_LARGE_HP_BAR {
+                hero_view.draw_hp_bar(frame);
+            } else {
+                hero_view.draw_small_hp_bar(frame);
+            }
+            SceneView::new(&self.scene).draw(frame, self.hero.id);
         });
 
         vec![geometry]

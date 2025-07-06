@@ -1,4 +1,4 @@
-use iced::widget::{Scrollable, button, column, container, pick_list, row, text};
+use iced::widget::{Row, Scrollable, button, column, container, pick_list, row, text, text_input};
 use iced::{Alignment, Element};
 
 use shared::npc::{NpcAttackInfo, NpcConstructor};
@@ -29,6 +29,7 @@ impl Page {
 pub enum Message {
     ReadFile,
     WriteFile,
+    ChangeRespawnTime(String),
     SelectAttack(NpcAttackInfo),
     AddAttack(NpcAttackInfo),
     RemoveAttack(usize),
@@ -72,6 +73,13 @@ impl Page {
                 self.data = load_by_id(self.id);
             }
             Message::WriteFile => save_by_id(&self.data, self.id),
+            Message::ChangeRespawnTime(value) => {
+                let parsed = value.parse::<u128>().ok();
+                let Some(parsed) = parsed else {
+                    return;
+                };
+                self.data.respawn_time = parsed;
+            }
             Message::SelectAttack(attack) => {
                 self.selected_attack = Some(attack);
             }
@@ -116,6 +124,11 @@ impl Page {
         .spacing(10);
 
         let npc_details_column = column![
+            editor_row(
+                "Respawn time, s",
+                text_input("Respawn time, s", &format!("{}", self.data.respawn_time))
+                    .on_input(Message::ChangeRespawnTime),
+            ),
             text("Add attack:"),
             add_attack_row,
             text("Attacks:"),
@@ -129,4 +142,10 @@ impl Page {
 
         contents.into()
     }
+}
+
+fn editor_row<'a, T: Into<Element<'a, Message>>>(label: &'a str, element: T) -> Row<'a, Message> {
+    row![text(label), element.into()]
+        .align_y(Alignment::Center)
+        .spacing(10)
 }

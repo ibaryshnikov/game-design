@@ -8,6 +8,7 @@ use crate::attack::{AttackConstructor, ComplexAttackConstructor, RecoverInfo};
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct NpcConstructor {
     pub name: String,
+    pub respawn_time: u128,
     pub attacks: Vec<NpcAttackInfo>,
     pub hp: i32,
 }

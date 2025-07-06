@@ -19,6 +19,7 @@ use crate::scene;
 
 pub struct Boss {
     pub position: Point2<f32>,
+    pub size: f32,
     attacks: Vec<AttackConstructor>,
     pub attacking: Option<AttackInfo>,
     recovering: Option<RecoverInfo>,
@@ -26,7 +27,9 @@ pub struct Boss {
     pub attacking_complex: Option<ComplexAttack>,
     pub action: Option<Action>,
     pub hp: i32,
-    max_hp: i32,
+    pub max_hp: i32,
+    pub time_since_defeated: u128,
+    pub respawn_time: u128,
 }
 
 impl Character for Boss {
@@ -85,6 +88,7 @@ impl Boss {
     pub fn new(position: Point2<f32>) -> Self {
         Boss {
             position,
+            size: 30.0,
             attacks: Vec::new(),
             attacking: None,
             recovering: None,
@@ -93,15 +97,22 @@ impl Boss {
             action: None,
             hp: 300,
             max_hp: 300,
+            time_since_defeated: 0,
+            respawn_time: 10_000, // 10s
         }
     }
     pub fn from_constructor(position: Point2<f32>, constructor: NpcConstructor) -> Self {
-        let NpcConstructor { attacks, .. } = constructor;
+        let NpcConstructor {
+            respawn_time,
+            attacks,
+            ..
+        } = constructor;
         let attacks = load_attacks(attacks);
         // let attacks_complex = load_complex_attacks(Vec::new());
         let attacks_complex = vec![get_complex_attack_constructor()];
         Boss {
             position,
+            size: 30.0,
             attacks,
             attacking: None,
             recovering: None,
@@ -110,6 +121,8 @@ impl Boss {
             action: None,
             hp: 300,
             max_hp: 300,
+            time_since_defeated: 0,
+            respawn_time: respawn_time * 1000, // change s to ms
         }
     }
     pub fn to_network(&self) -> server::Boss {
@@ -126,6 +139,7 @@ impl Boss {
     pub fn from_network(boss: server::Boss) -> Self {
         Self {
             position: boss.position,
+            size: 30.0,
             attacks: Vec::new(),
             attacking: boss.attacking.clone(),
             recovering: boss.recovering.clone(),
@@ -134,10 +148,12 @@ impl Boss {
             action: boss.action.clone(),
             hp: boss.hp,
             max_hp: boss.max_hp,
+            time_since_defeated: 0,
+            respawn_time: 0, // don't track respawn time on the client
         }
     }
     pub fn reset(&mut self) {
-        self.hp = self.max_hp;
+        // self.hp = self.max_hp;
     }
     pub fn stop(&mut self) {
         self.attacking = None;
@@ -156,6 +172,8 @@ impl Boss {
         if let scene::Mode::Client = scene_mode {
             return false;
         }
+
+        self.check_respawn_time(dt);
 
         if characters.is_empty() {
             return false;
@@ -181,7 +199,7 @@ impl Boss {
             AttackOrder::ProjectileFromCaster => {
                 if !attack_info.damage_done {
                     for hero in characters.values_mut() {
-                        if check_hit(attack_info, attack_info.distance, hero.position) {
+                        if check_hit(attack_info, attack_info.distance, hero.position, hero.size) {
                             hero.receive_damage();
                             attack_info.damage_done = true;
                         }
@@ -195,7 +213,7 @@ impl Boss {
                 // do nothing, we did check_hit above
             } else {
                 for hero in characters.values_mut() {
-                    if check_hit(attack_info, attack_info.distance, hero.position) {
+                    if check_hit(attack_info, attack_info.distance, hero.position, hero.size) {
                         hero.receive_damage();
                     }
                 }
@@ -214,6 +232,9 @@ impl Boss {
         }
     }
     fn check_new_attack(&mut self, character_position: Point2<f32>) -> bool {
+        if self.defeated() {
+            return false;
+        }
         if self.attacking.is_some() || self.recovering.is_some() {
             return false;
         }
@@ -250,6 +271,9 @@ impl Boss {
         true // send updates to client if it's a server
     }
     fn check_new_attack_complex(&mut self, character_position: Point2<f32>) {
+        if self.defeated() {
+            return;
+        }
         if self.attacking_complex.is_some() {
             return;
         }
@@ -284,12 +308,15 @@ impl Boss {
         self.attacking_complex = Some(attack);
     }
     pub fn receive_damage(&mut self) {
-        if self.hp == 0 {
+        if self.defeated() {
             return;
         }
         self.hp -= 35;
         if self.hp < 0 {
             self.hp = 0;
+        }
+        if self.hp == 0 {
+            self.time_since_defeated = 0;
         }
     }
     pub fn hp_left_percent(&self) -> f32 {
@@ -297,5 +324,15 @@ impl Boss {
     }
     pub fn defeated(&self) -> bool {
         self.hp <= 0
+    }
+    fn check_respawn_time(&mut self, dt: u128) {
+        if !self.defeated() {
+            return;
+        }
+        self.time_since_defeated += dt;
+        // println!("time since defeated: {}", self.time_since_defeated);
+        if self.time_since_defeated > self.respawn_time {
+            self.hp = self.max_hp;
+        }
     }
 }

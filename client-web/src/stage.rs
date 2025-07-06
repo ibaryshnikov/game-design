@@ -206,20 +206,25 @@ impl Stage {
                         let frame_number_diff =
                             self.scene.frame_number.saturating_sub(scene.frame_number);
 
+                        self.scene.characters.clear();
                         for (key, network_character) in scene.characters.into_iter() {
                             // console_log!("Network character {:?}", network_character);
                             let mut character = Hero::from_network(network_character);
-                            for _ in 0..frame_number_diff {
-                                let dt_to_replay = 10; // 1 frame is 10ms
-                                character.update(&mut self.scene.npc, dt_to_replay);
-                            }
+                            // for _ in 0..frame_number_diff {
+                            //     let dt_to_replay = 10; // 1 frame is 10ms
+                            //     character.update(&mut self.scene.npc, dt_to_replay);
+                            // }
+                            // console_log!("self hero id {}, character id {}", self.hero.id, character.id);
                             if character.id == self.hero.id {
                                 self.hero.position = character.position;
+                                self.hero.hp = character.hp;
+                                self.scene.characters.insert(key, character);
                             } else {
                                 self.scene.characters.insert(key, character);
                             }
                         }
                         // console_log!("New position: {:?}", self.hero.position);
+                        // console_log!("scene npc {:?}", scene.npc);
                         self.scene.npc = scene.npc.into_iter().map(Boss::from_network).collect();
                     }
                     other => {
@@ -238,8 +243,15 @@ impl Stage {
         self.ctx
             .clear_rect(0.0, 0.0, f64::from(self.width), f64::from(self.height));
 
-        HeroView::new(&self.hero).draw(&self.ctx);
-        SceneView::new(&self.scene).draw(&self.ctx);
+        let hero_view = HeroView::new(&self.hero);
+        hero_view.draw(&self.ctx);
+        if crate::scene::DRAW_LARGE_HP_BAR {
+            hero_view.draw_hp_bar(&self.ctx);
+        } else {
+            hero_view.draw_small_hp_bar(&self.ctx);
+        }
+
+        SceneView::new(&self.scene).draw(&self.ctx, self.hero.id);
     }
 }
 

@@ -135,6 +135,9 @@ impl<'a> AttackView<'a> {
         let angle = info.get_base_angle();
 
         let (start_angle, end_angle) = info.get_angles(angle, width_radian);
+
+        // console_log!("start_angle {start_angle}, end_angle {end_angle}, width_radian {width_radian}");
+
         let start_x = info.position.x as f64;
         let start_y = info.position.y as f64;
         draw_circle_segment(

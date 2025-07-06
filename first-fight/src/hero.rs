@@ -17,7 +17,7 @@ impl<'a> HeroView<'a> {
         self.draw_body(frame);
         self.draw_direction(frame);
         self.draw_attack(frame);
-        self.draw_health_bar(frame);
+        // self.draw_health_bar(frame);
     }
     fn draw_body(&self, frame: &mut Frame) {
         if let Some(dash_info) = &self.hero_info.dashing {
@@ -71,7 +71,32 @@ impl<'a> HeroView<'a> {
 
         frame.fill(&path, Color::from_rgb8(0, 255, 0));
     }
-    fn draw_health_bar(&self, frame: &mut Frame) {
+    pub fn draw_small_hp_bar(&self, frame: &mut Frame) {
+        let info = &self.hero_info;
+        let start = iced_core::Point::new(
+            info.position.x - info.size,
+            info.position.y - info.size * 2.0,
+        );
+        let bar_width = info.size * 2.0;
+        let bar_height = 8.0;
+
+        // draw red background
+        let path = Path::new(|b| {
+            let size = Size::new(bar_width, bar_height);
+            b.rectangle(start, size);
+        });
+        frame.fill(&path, Color::from_rgb8(255, 0, 0));
+
+        // draw hp left as green
+        let path = Path::new(|b| {
+            let width = bar_width * info.hp_left_percent();
+            let size = Size::new(width, bar_height);
+            b.rectangle(start, size);
+        });
+
+        frame.fill(&path, Color::from_rgb8(0, 255, 0));
+    }
+    pub fn draw_hp_bar(&self, frame: &mut Frame) {
         let start = iced_core::Point::new(10.0, 10.0);
         let bar_width = 200.0;
         let bar_height = 20.0;

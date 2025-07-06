@@ -18,6 +18,7 @@ pub struct Hero {
     pub hp: i32,
     max_hp: i32,
     pub position: Point2<f32>,
+    pub size: f32,
     pub direction: Vector2<f32>,
     moving: Moving,
     last_key_up: Option<u128>,
@@ -60,6 +61,7 @@ impl Hero {
             hp: 1000,
             max_hp: 1000,
             position,
+            size: 20.0,
             direction: Vector2::new(0.0, 0.0),
             moving: Moving {
                 left: false,
@@ -104,6 +106,7 @@ impl Hero {
             hp: hero.hp,
             max_hp: hero.max_hp,
             position: hero.position,
+            size: 20.0,
             direction: hero.direction,
             moving: hero.moving.clone(),
             last_key_up: None,
@@ -353,7 +356,12 @@ impl Hero {
         attack_info.update(dt);
         if attack_info.completed() {
             for boss in npc.iter_mut() {
-                if check_hit(attack_info, self.melee_attack_distance, boss.position) {
+                if check_hit(
+                    attack_info,
+                    self.melee_attack_distance,
+                    boss.position,
+                    boss.size,
+                ) {
                     boss.receive_damage();
                 }
             }
