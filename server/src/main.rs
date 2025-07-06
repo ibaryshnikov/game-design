@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU16, Ordering};
 
 use axum::body::Bytes;
 use axum::extract::State;
@@ -26,8 +27,11 @@ mod types;
 
 use types::{GameLoopSender, LoopMessage};
 
+const MAX_CLIENTS: u16 = 30;
+
 struct AppState {
     game_loop_sender: GameLoopSender,
+    client_counter: Arc<AtomicU16>,
 }
 
 #[tokio::main]
@@ -36,12 +40,15 @@ async fn main() {
 
     let config = config::Config::read_from_file();
 
-    let (sender, receiver) = mpsc::channel(1000);
+    let (game_loop_sender, receiver) = mpsc::channel(1000);
 
     tokio::spawn(game_loop::game_loop(receiver));
 
+    let client_counter = Arc::new(AtomicU16::new(0));
+
     let state = AppState {
-        game_loop_sender: sender,
+        game_loop_sender,
+        client_counter,
     };
 
     let app = Router::new()
@@ -71,10 +78,16 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) ->
     // share some data between sockets here
     // by passing it to the closure
     let sender = state.game_loop_sender.clone();
-    ws.on_upgrade(move |socket| handle_socket(id, socket, sender))
+    let client_counter = state.client_counter.clone();
+    ws.on_upgrade(move |socket| handle_socket(id, socket, sender, client_counter))
 }
 
-async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
+async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender, client_counter: Arc<AtomicU16>) {
+    let clients_number = client_counter.fetch_add(1, Ordering::SeqCst);
+    if clients_number >= MAX_CLIENTS {
+        let _ = client_counter.fetch_sub(1, Ordering::SeqCst);
+        return;
+    }
     let (mut write, mut read) = socket.split();
 
     let data = server::Message::SetId(id).to_vec();
@@ -87,6 +100,7 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
     if let Err(e) = sender.send(LoopMessage::Broadcaster(message)).await {
         tracing::error!("Failed to send WebSocket writer to broadcaster: {e}");
         tracing::error!("Closing socket for {id}");
+        let _ = client_counter.fetch_sub(1, Ordering::SeqCst);
         return;
     }
 
@@ -119,4 +133,6 @@ async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender) {
     if let Err(e) = sender.send(LoopMessage::Leave(id)).await {
         tracing::error!("Failed to send WebSocket message to broadcaster: {e}");
     }
+
+    let _ = client_counter.fetch_sub(1, Ordering::SeqCst);
 }

@@ -19,6 +19,8 @@ pub async fn game_loop(mut receiver: GameLoopReceiver) {
 
     tokio::spawn(broadcaster::start(broadcaster_receiver));
 
+    let mut tick = Box::pin(timer());
+
     loop {
         tokio::select! {
             maybe_message = receiver.recv() => {
@@ -47,7 +49,8 @@ pub async fn game_loop(mut receiver: GameLoopReceiver) {
                     panic!("Receiver is empty, game loop channel is closed");
                 }
             }
-            _ = timer() => {
+            _ = &mut tick => {
+                tick = Box::pin(timer());
                 if stage.update() {
                     send_scene_to_clients(&stage, &broadcaster_sender).await;
                 }

@@ -20,7 +20,7 @@ async function onWindowLoad() {
     const container = new StageContainer(wsWrite);
 
     function draw() {
-        requestAnimationFrame(draw);
+        setTimeout(draw, 11);
         container.updateState();
         container.draw();
     }

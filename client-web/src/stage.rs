@@ -193,8 +193,11 @@ impl Stage {
                 self.hero.id = id;
             }
             server::Message::ResponseFrameNumber(number) => {
-                console_log!("Got frame number from server: {number}");
+                // console_log!("Got frame number from server: {number}");
+                // console_log!("old frame number {}", self.scene.frame_number);
                 self.scene.frame_number = number + self.frames_passed_since_request / 2;
+                // console_log!("Frames passed: {}", self.frames_passed_since_request);
+                // console_log!("new frame number {}", self.scene.frame_number);
                 self.frames_passed_since_request = 0;
             }
             server::Message::Update(update) => {
@@ -210,10 +213,10 @@ impl Stage {
                         for (key, network_character) in scene.characters.into_iter() {
                             // console_log!("Network character {:?}", network_character);
                             let mut character = Hero::from_network(network_character);
-                            // for _ in 0..frame_number_diff {
-                            //     let dt_to_replay = 10; // 1 frame is 10ms
-                            //     character.update(&mut self.scene.npc, dt_to_replay);
-                            // }
+                            for _ in 0..frame_number_diff {
+                                let dt_to_replay = 10; // 1 frame is 10ms
+                                character.update(&mut self.scene.npc, dt_to_replay);
+                            }
                             // console_log!("self hero id {}, character id {}", self.hero.id, character.id);
                             if character.id == self.hero.id {
                                 self.hero.position = character.position;
