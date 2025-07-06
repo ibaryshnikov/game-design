@@ -166,7 +166,7 @@ impl Boss {
         scene_mode: scene::Mode,
     ) -> bool {
         self.update_attack(characters, dt);
-        self.update_attack_complex(characters, dt);
+        // self.update_attack_complex(characters, dt);
         self.update_recovery(dt);
 
         if let scene::Mode::Client = scene_mode {

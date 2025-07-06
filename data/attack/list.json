@@ -1,5 +1,5 @@
 {
-  "last_id": 5,
+  "last_id": 10,
   "list": [
     {
       "id": 1,
@@ -24,6 +24,31 @@
     {
       "id": 5,
       "name": "Fireblast",
+      "status": "Active"
+    },
+    {
+      "id": 6,
+      "name": "Wide arc RightToLeft",
+      "status": "Active"
+    },
+    {
+      "id": 7,
+      "name": "Wide arc LeftThenRight",
+      "status": "Active"
+    },
+    {
+      "id": 8,
+      "name": "Wide arc RightThenLeft",
+      "status": "Active"
+    },
+    {
+      "id": 9,
+      "name": "Wide arc CenterToSides",
+      "status": "Active"
+    },
+    {
+      "id": 10,
+      "name": "Wide arc SidesToCenter",
       "status": "Active"
     }
   ]

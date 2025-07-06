@@ -1,0 +1,22 @@
+{
+  "name": "Wide arc LeftThenRight",
+  "position": [
+    0.0,
+    0.0
+  ],
+  "direction": [
+    0.0,
+    0.0
+  ],
+  "delay": 200,
+  "time_to_complete": 400,
+  "aftercast": 300,
+  "kind": "Pizza",
+  "order": "LeftThenRight",
+  "range": {
+    "from": 0.0,
+    "to": 150.0
+  },
+  "width_angle": 1.7,
+  "state": "Selected"
+}

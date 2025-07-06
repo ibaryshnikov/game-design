@@ -163,8 +163,11 @@ impl Page {
             ),
             editor_row(
                 "Width angle",
-                text_input("Attack width angle", &format!("{}", self.data.width_angle))
-                    .on_input(Message::ChangeWidthAngle),
+                text_input(
+                    "Attack width angle",
+                    &format!("{:?}", self.data.width_angle)
+                )
+                .on_input(Message::ChangeWidthAngle),
             ),
             row![
                 text("Kind"),

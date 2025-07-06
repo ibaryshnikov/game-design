@@ -21,6 +21,26 @@
     {
       "id": 5,
       "name": "Fireblast"
+    },
+    {
+      "id": 6,
+      "name": "Wide arc RightToLeft"
+    },
+    {
+      "id": 7,
+      "name": "Wide arc LeftThenRight"
+    },
+    {
+      "id": 8,
+      "name": "Wide arc RightThenLeft"
+    },
+    {
+      "id": 9,
+      "name": "Wide arc CenterToSides"
+    },
+    {
+      "id": 10,
+      "name": "Wide arc SidesToCenter"
     }
   ],
   "hp": 0
