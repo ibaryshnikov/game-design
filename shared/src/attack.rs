@@ -1,7 +1,11 @@
+use std::collections::HashMap;
 use std::fmt::{self, Display};
 
 use nalgebra::{Point2, Vector2};
 use serde::{Deserialize, Serialize};
+
+use crate::character::Character;
+use crate::check_hit;
 
 pub trait ReceiveDamage {
     fn receive_damage(&mut self, value: u32);
@@ -852,6 +856,32 @@ impl AttackInfo {
 }
 
 impl AttackInfo {
+    pub fn check_damage_for_boss<T>(&mut self, characters: &mut HashMap<u128, T>)
+    where
+        T: Character,
+    {
+        for hero in characters.values_mut() {
+            if check_hit(self, self.distance, hero.get_position(), hero.get_size()) {
+                hero.receive_damage();
+                self.damage_done = true;
+            }
+        }
+    }
+    pub fn check_damage_for_hero<T>(&mut self, melee_attack_distance: f32, npc: &mut [T])
+    where
+        T: Character,
+    {
+        for boss in npc.iter_mut() {
+            if check_hit(
+                self,
+                melee_attack_distance,
+                boss.get_position(),
+                boss.get_size(),
+            ) {
+                boss.receive_damage();
+            }
+        }
+    }
     pub fn update(&mut self, dt: u128) {
         self.time_passed += dt;
         match self.state {

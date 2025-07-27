@@ -10,7 +10,6 @@ use shared::attack::{
     ComplexAttack, ComplexAttackConstructor, RecoverInfo,
 };
 use shared::character::Character;
-use shared::check_hit;
 use shared::npc::{NpcConstructor, load_attacks, load_complex_attacks};
 use shared::position::{direction_from, distance_between};
 
@@ -21,11 +20,8 @@ pub struct Boss {
     pub position: Point2<f32>,
     pub size: f32,
     attacks: Vec<AttackConstructor>,
-    pub attacking: Option<AttackInfo>,
-    recovering: Option<RecoverInfo>,
     attacks_complex: Vec<ComplexAttackConstructor>,
-    pub attacking_complex: Option<ComplexAttack>,
-    pub action: Option<Action>,
+    pub action: Action,
     pub hp: i32,
     pub max_hp: i32,
     pub time_since_defeated: u128,
@@ -33,11 +29,23 @@ pub struct Boss {
 }
 
 impl Character for Boss {
-    fn get_recovering_state(&mut self) -> &mut Option<RecoverInfo> {
-        &mut self.recovering
+    fn receive_damage(&mut self) {
+        if self.defeated() {
+            return;
+        }
+        self.hp -= 35;
+        if self.hp < 0 {
+            self.hp = 0;
+        }
+        if self.hp == 0 {
+            self.time_since_defeated = 0;
+        }
     }
-    fn clear_recovering_state(&mut self) {
-        self.recovering = None;
+    fn get_position(&self) -> Point2<f32> {
+        self.position
+    }
+    fn get_size(&self) -> f32 {
+        self.size
     }
 }
 
@@ -90,11 +98,8 @@ impl Boss {
             position,
             size: 30.0,
             attacks: Vec::new(),
-            attacking: None,
-            recovering: None,
             attacks_complex: Vec::new(),
-            attacking_complex: None,
-            action: None,
+            action: Action::Empty,
             hp: 300,
             max_hp: 300,
             time_since_defeated: 0,
@@ -114,11 +119,8 @@ impl Boss {
             position,
             size: 30.0,
             attacks,
-            attacking: None,
-            recovering: None,
             attacks_complex,
-            attacking_complex: None,
-            action: None,
+            action: Action::Empty,
             hp: 300,
             max_hp: 300,
             time_since_defeated: 0,
@@ -128,9 +130,6 @@ impl Boss {
     pub fn to_network(&self) -> server::Boss {
         server::Boss {
             position: self.position,
-            attacking: self.attacking.clone(),
-            recovering: self.recovering.clone(),
-            attacking_complex: self.attacking_complex.clone(),
             action: self.action.clone(),
             hp: self.hp,
             max_hp: self.max_hp,
@@ -141,10 +140,7 @@ impl Boss {
             position: boss.position,
             size: 30.0,
             attacks: Vec::new(),
-            attacking: boss.attacking.clone(),
-            recovering: boss.recovering.clone(),
             attacks_complex: Vec::new(),
-            attacking_complex: boss.attacking_complex.clone(),
             action: boss.action.clone(),
             hp: boss.hp,
             max_hp: boss.max_hp,
@@ -156,8 +152,7 @@ impl Boss {
         // self.hp = self.max_hp;
     }
     pub fn stop(&mut self) {
-        self.attacking = None;
-        self.recovering = None;
+        self.action = Action::Empty;
     }
     pub fn update(
         &mut self,
@@ -165,9 +160,7 @@ impl Boss {
         dt: u128,
         scene_mode: scene::Mode,
     ) -> bool {
-        self.update_attack(characters, dt);
-        // self.update_attack_complex(characters, dt);
-        self.update_recovery(dt);
+        self.update_action(characters, dt);
 
         if let scene::Mode::Client = scene_mode {
             return false;
@@ -189,53 +182,43 @@ impl Boss {
             false
         }
     }
-    fn update_attack(&mut self, characters: &mut HashMap<u128, Hero>, dt: u128) {
-        let Some(attack_info) = &mut self.attacking else {
-            return;
-        };
-        attack_info.update(dt);
-        #[allow(clippy::single_match)] // will be extended later probably
-        match attack_info.order {
-            AttackOrder::ProjectileFromCaster => {
-                if !attack_info.damage_done {
-                    for hero in characters.values_mut() {
-                        if check_hit(attack_info, attack_info.distance, hero.position, hero.size) {
-                            hero.receive_damage();
-                            attack_info.damage_done = true;
+    fn update_action(&mut self, characters: &mut HashMap<u128, Hero>, dt: u128) {
+        match &mut self.action {
+            Action::Attack(attack) => {
+                attack.update(dt);
+                #[allow(clippy::single_match)] // will be extended later probably
+                match attack.order {
+                    AttackOrder::ProjectileFromCaster => {
+                        if !attack.damage_done {
+                            attack.check_damage_for_boss(characters);
                         }
                     }
+                    _ => (),
                 }
-            }
-            _ => (),
-        }
-        if attack_info.completed() {
-            if let AttackOrder::ProjectileFromCaster = attack_info.order {
-                // do nothing, we did check_hit above
-            } else {
-                for hero in characters.values_mut() {
-                    if check_hit(attack_info, attack_info.distance, hero.position, hero.size) {
-                        hero.receive_damage();
+                if attack.completed() {
+                    if let AttackOrder::ProjectileFromCaster = attack.order {
+                        // do nothing, we did check_hit above
+                    } else {
+                        attack.check_damage_for_boss(characters);
                     }
+                    let recovery = RecoverInfo::new(attack.aftercast);
+                    self.action = Action::Recovery(recovery);
                 }
             }
-            self.recovering = Some(RecoverInfo::new(attack_info.aftercast));
-            self.attacking = None;
-        }
-    }
-    fn update_attack_complex(&mut self, _characters: &mut HashMap<u128, Hero>, dt: u128) {
-        let Some(attack_info) = &mut self.attacking_complex else {
-            return;
-        };
-        attack_info.update(dt);
-        if attack_info.completed() {
-            self.attacking_complex = None;
+            Action::ComplexAttack(attack) => {
+                attack.update(dt);
+                if attack.completed() {
+                    self.action = Action::Empty;
+                }
+            }
+            other => other.update(dt),
         }
     }
     fn check_new_attack(&mut self, character_position: Point2<f32>) -> bool {
         if self.defeated() {
             return false;
         }
-        if self.attacking.is_some() || self.recovering.is_some() {
+        if self.action.is_some() {
             return false;
         }
         let distance = distance_between(&self.position, &character_position);
@@ -254,7 +237,7 @@ impl Boss {
         if direction.norm() > 0.000_001 {
             direction.normalize_mut();
         }
-        let attack_info = match &constructor.order {
+        let info = match &constructor.order {
             AttackOrder::ExpandingCircle => {
                 AttackInfo::from_constructor(constructor, character_position, direction, 70.0)
             }
@@ -267,14 +250,14 @@ impl Boss {
                 AttackInfo::from_constructor(constructor, self.position, direction, range)
             }
         };
-        self.attacking = Some(attack_info);
+        self.action = Action::Attack(info);
         true // send updates to client if it's a server
     }
     fn check_new_attack_complex(&mut self, character_position: Point2<f32>) {
         if self.defeated() {
             return;
         }
-        if self.attacking_complex.is_some() {
+        if self.action.is_some() {
             return;
         }
         let distance = distance_between(&self.position, &character_position);
@@ -305,19 +288,7 @@ impl Boss {
             direction,
             direction_angle,
         );
-        self.attacking_complex = Some(attack);
-    }
-    pub fn receive_damage(&mut self) {
-        if self.defeated() {
-            return;
-        }
-        self.hp -= 35;
-        if self.hp < 0 {
-            self.hp = 0;
-        }
-        if self.hp == 0 {
-            self.time_since_defeated = 0;
-        }
+        self.action = Action::ComplexAttack(attack);
     }
     pub fn hp_left_percent(&self) -> f32 {
         self.hp as f32 / self.max_hp as f32

@@ -10,6 +10,7 @@ pub mod list;
 pub mod npc;
 pub mod position;
 pub mod projectile;
+pub mod resource;
 
 use attack::{AttackInfo, AttackKind};
 

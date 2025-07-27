@@ -9,6 +9,7 @@ mod attack;
 mod character;
 mod level;
 mod npc;
+mod resource;
 mod utils;
 
 const DATA_PATH: &str = "../data/";
@@ -35,6 +36,7 @@ enum Message {
     Npc(npc::Message),
     Level(level::Message),
     Character(character::Message),
+    Resource(resource::Message),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,6 +45,7 @@ enum EditorKind {
     Npc,
     Level,
     Character,
+    Resource,
 }
 
 impl EditorKind {
@@ -56,6 +59,7 @@ impl EditorKind {
             Npc => "Npc",
             Level => "Level",
             Character => "Character",
+            Resource => "Resource",
         }
     }
     fn make_button(self, selected: &Option<EditorKind>) -> Button<'static, Message> {
@@ -86,6 +90,7 @@ enum EditorState {
     Npc(Box<npc::Page>),
     Level(Box<level::Page>),
     Character(Box<character::Page>),
+    Resource(Box<resource::Page>),
 }
 
 struct App {
@@ -112,6 +117,7 @@ impl Program for App {
                 EditorKind::Npc => self.state = npc::load_state(),
                 EditorKind::Level => self.state = level::load_state(),
                 EditorKind::Character => self.state = character::load_state(),
+                EditorKind::Resource => self.state = resource::load_state(),
             },
             Message::Attack(message) => {
                 if let EditorState::Attack(attack) = &mut self.state {
@@ -133,6 +139,11 @@ impl Program for App {
                     page.update(message);
                 }
             }
+            Message::Resource(message) => {
+                if let EditorState::Resource(page) = &mut self.state {
+                    page.update(message);
+                }
+            }
         }
         Task::none()
     }
@@ -143,6 +154,7 @@ impl Program for App {
             EditorKind::Npc.make_button(&selected_kind),
             EditorKind::Level.make_button(&selected_kind),
             EditorKind::Character.make_button(&selected_kind),
+            EditorKind::Resource.make_button(&selected_kind),
         ]
         .align_y(Alignment::Center)
         .spacing(10);
@@ -164,6 +176,10 @@ impl Program for App {
             }
             EditorState::Character(page) => {
                 let element = page.view().map(Message::Character);
+                contents = contents.push(element);
+            }
+            EditorState::Resource(page) => {
+                let element = page.view().map(Message::Resource);
                 contents = contents.push(element);
             }
         }
@@ -195,6 +211,7 @@ impl App {
             EditorState::Npc(_) => Npc,
             EditorState::Level(_) => Level,
             EditorState::Character(_) => Character,
+            EditorState::Resource(_) => Resource,
         }
         .into()
     }

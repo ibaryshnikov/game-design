@@ -3,11 +3,8 @@ use nalgebra::{Point2, Vector2};
 use network::client::{KeyActionKind, Move};
 use network::server;
 use shared::action::Action;
-use shared::attack::{
-    AttackInfo, AttackKind, AttackOrder, AttackState, RecoverInfo, SelectionInfo,
-};
+use shared::attack::{AttackInfo, AttackKind, AttackOrder, AttackState, RecoverInfo};
 use shared::character::{Character, CharacterSettings};
-use shared::check_hit;
 use shared::hero::{DashCooldown, DashInfo, Moving};
 
 use crate::boss::Boss;
@@ -24,21 +21,29 @@ pub struct Hero {
     last_key_up: Option<u128>,
     pub melee_attack_distance: f32,
     pub ranged_attack_distance: f32,
-    pub selected: Option<SelectionInfo>,
-    pub attacking: Option<AttackInfo>,
-    pub recovering: Option<RecoverInfo>,
-    pub dashing: Option<DashInfo>,
-    dash_cooldown: Option<DashCooldown>,
-    pub action: Option<Action>,
+    pub action: Action,
     pub character_settings: CharacterSettings,
 }
 
 impl Character for Hero {
-    fn get_recovering_state(&mut self) -> &mut Option<RecoverInfo> {
-        &mut self.recovering
+    fn receive_damage(&mut self) {
+        if let Action::Dash(_) = self.action {
+            // invulnerability frame
+            return;
+        }
+        if self.hp == 0 {
+            return;
+        }
+        self.hp -= 35;
+        if self.hp < 0 {
+            self.hp = 0;
+        }
     }
-    fn clear_recovering_state(&mut self) {
-        self.recovering = None;
+    fn get_position(&self) -> Point2<f32> {
+        self.position
+    }
+    fn get_size(&self) -> f32 {
+        self.size
     }
 }
 
@@ -72,12 +77,7 @@ impl Hero {
             last_key_up: None,
             melee_attack_distance: 100.0,
             ranged_attack_distance: 300.0,
-            selected: None,
-            attacking: None,
-            recovering: None,
-            dashing: None,
-            dash_cooldown: None,
-            action: None,
+            action: Action::Empty,
             character_settings: load_character_settings_by_id(1),
         }
     }
@@ -91,11 +91,6 @@ impl Hero {
             moving: self.moving.clone(),
             melee_attack_distance: self.melee_attack_distance,
             ranged_attack_distance: self.ranged_attack_distance,
-            selected: self.selected.clone(),
-            attacking: self.attacking.clone(),
-            recovering: self.recovering.clone(),
-            dashing: self.dashing.clone(),
-            dash_cooldown: self.dash_cooldown.clone(),
             action: self.action.clone(),
             character_settings: self.character_settings.clone(),
         }
@@ -112,11 +107,6 @@ impl Hero {
             last_key_up: None,
             melee_attack_distance: hero.melee_attack_distance,
             ranged_attack_distance: hero.ranged_attack_distance,
-            selected: hero.selected.clone(),
-            attacking: hero.attacking.clone(),
-            recovering: hero.recovering.clone(),
-            dashing: hero.dashing.clone(),
-            dash_cooldown: hero.dash_cooldown.clone(),
             action: hero.action.clone(),
             character_settings: hero.character_settings.clone(),
         }
@@ -129,11 +119,6 @@ impl Hero {
         self.moving = hero.moving.clone();
         self.melee_attack_distance = hero.melee_attack_distance;
         self.ranged_attack_distance = hero.ranged_attack_distance;
-        self.selected = hero.selected;
-        self.attacking = hero.attacking;
-        self.recovering = hero.recovering;
-        self.dashing = hero.dashing;
-        self.dash_cooldown = hero.dash_cooldown;
         self.action = hero.action;
         self.character_settings = hero.character_settings;
     }
@@ -143,22 +128,7 @@ impl Hero {
         // self.stop();
     }
     pub fn stop(&mut self) {
-        self.selected = None;
-        self.attacking = None;
-        self.recovering = None;
-    }
-    pub fn receive_damage(&mut self) {
-        if self.dashing.is_some() {
-            // invulnerability frame
-            return;
-        }
-        if self.hp == 0 {
-            return;
-        }
-        self.hp -= 35;
-        if self.hp < 0 {
-            self.hp = 0;
-        }
+        self.action = Action::Empty;
     }
     pub fn hp_left_percent(&self) -> f32 {
         self.hp as f32 / self.max_hp as f32
@@ -188,13 +158,7 @@ impl Hero {
         self.direction = direction;
     }
     pub fn dash(&mut self) {
-        if self.attacking.is_some() {
-            return;
-        }
-        if self.recovering.is_some() {
-            return;
-        }
-        if self.dashing.is_some() || self.dash_cooldown.is_some() {
+        if self.action.is_some() {
             return;
         }
         let mut direction = self.direction;
@@ -203,14 +167,11 @@ impl Hero {
             return;
         }
         direction.normalize_mut();
-        let dash_info = DashInfo::new(direction, self.character_settings.dash_duration);
-        self.dashing = Some(dash_info);
+        let dash = DashInfo::new(direction, self.character_settings.dash_duration);
+        self.action = Action::Dash(dash);
     }
     pub fn check_attack(&mut self) {
-        if self.attacking.is_some() {
-            return;
-        }
-        if self.recovering.is_some() {
+        if self.action.is_some() {
             return;
         }
         let mut direction = self.direction;
@@ -222,7 +183,7 @@ impl Hero {
         }
         direction.normalize_mut();
 
-        let attack_info = AttackInfo {
+        let attack = AttackInfo {
             position: self.position,
             direction,
             delay: 50,
@@ -237,7 +198,7 @@ impl Hero {
             state: AttackState::Selected,
             damage_done: false,
         };
-        self.attacking = Some(attack_info);
+        self.action = Action::Attack(attack);
     }
     pub fn handle_move_action(&mut self, kind: KeyActionKind, movement: Move) {
         let moving = match movement {
@@ -259,6 +220,7 @@ impl Hero {
     }
     pub fn update_visuals(&mut self, dt: u128) {
         self.update_position(dt);
+        self.update_action_visuals(dt);
         if let Some(time_passed) = &mut self.last_key_up {
             *time_passed += dt;
             if *time_passed > 100 {
@@ -268,21 +230,35 @@ impl Hero {
                 }
             }
         }
-        if let Some(cooldown) = &mut self.dash_cooldown {
-            cooldown.update(dt);
-            if cooldown.completed() {
-                self.dash_cooldown = None;
+    }
+    fn update_action(&mut self, npc: &mut [Boss], dt: u128) {
+        match &mut self.action {
+            Action::Attack(attack) => {
+                attack.update(dt);
+                if attack.completed() {
+                    attack.check_damage_for_hero(self.melee_attack_distance, npc);
+                    self.action = Action::Recovery(RecoverInfo::new(0));
+                }
             }
+            Action::ComplexAttack(_attack) => {}
+            other => other.update(dt),
         }
-        if self.attacking.is_some() {
-            self.update_attack_visuals(dt);
-        }
-        if self.recovering.is_some() {
-            self.update_recovery(dt);
+    }
+    fn update_action_visuals(&mut self, dt: u128) {
+        match &mut self.action {
+            Action::Attack(attack) => {
+                attack.update(dt);
+                if attack.completed() {
+                    self.action = Action::Recovery(RecoverInfo::new(0));
+                }
+            }
+            Action::ComplexAttack(_attack) => {}
+            other => other.update(dt),
         }
     }
     pub fn update(&mut self, npc: &mut [Boss], dt: u128) {
         self.update_position(dt);
+        self.update_action(npc, dt);
         if let Some(time_passed) = &mut self.last_key_up {
             *time_passed += dt;
             if *time_passed > 100 {
@@ -292,34 +268,16 @@ impl Hero {
                 }
             }
         }
-        if let Some(cooldown) = &mut self.dash_cooldown {
-            cooldown.update(dt);
-            if cooldown.completed() {
-                self.dash_cooldown = None;
-            }
-        }
-        if self.attacking.is_some() {
-            self.update_attack(npc, dt);
-        }
-        if self.recovering.is_some() {
-            self.update_recovery(dt);
-        }
     }
     fn update_position(&mut self, dt: u128) {
-        if self.attacking.is_some() {
-            return;
-        }
-        if self.recovering.is_some() {
-            return;
-        }
-
-        if let Some(dash_info) = &mut self.dashing {
-            dash_info.update(dt);
-            if dash_info.completed() {
-                self.position += dash_info.direction * self.character_settings.dash_distance as f32;
-                self.dashing = None;
-                self.dash_cooldown = Some(DashCooldown::new(200));
+        if let Action::Dash(dash) = &mut self.action {
+            dash.update(dt);
+            if dash.completed() {
+                self.position += dash.direction * self.character_settings.dash_distance as f32;
+                self.action = Action::DashCooldown(DashCooldown::new(200));
             }
+        } else if self.action.is_some() {
+            return;
         }
 
         let speed = 0.1;
@@ -337,36 +295,6 @@ impl Hero {
             self.position.y -= dt as f32 * speed;
         } else if self.moving.down {
             self.position.y += dt as f32 * speed;
-        }
-    }
-    fn update_attack_visuals(&mut self, dt: u128) {
-        let Some(attack_info) = &mut self.attacking else {
-            return;
-        };
-        attack_info.update(dt);
-        if attack_info.completed() {
-            self.recovering = Some(RecoverInfo::new(0));
-            self.attacking = None;
-        }
-    }
-    fn update_attack(&mut self, npc: &mut [Boss], dt: u128) {
-        let Some(attack_info) = &mut self.attacking else {
-            return;
-        };
-        attack_info.update(dt);
-        if attack_info.completed() {
-            for boss in npc.iter_mut() {
-                if check_hit(
-                    attack_info,
-                    self.melee_attack_distance,
-                    boss.position,
-                    boss.size,
-                ) {
-                    boss.receive_damage();
-                }
-            }
-            self.recovering = Some(RecoverInfo::new(0));
-            self.attacking = None;
         }
     }
 }

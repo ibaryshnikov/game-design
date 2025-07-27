@@ -2,6 +2,8 @@ use web_sys::CanvasRenderingContext2d;
 
 use game_core::hero::Hero;
 
+use shared::action::Action;
+
 use crate::attack::AttackView;
 
 pub struct HeroView<'a> {
@@ -22,7 +24,7 @@ impl<'a> HeroView<'a> {
     }
     fn draw_body(&self, ctx: &CanvasRenderingContext2d) {
         let hero_info = &self.hero_info;
-        if let Some(dash_info) = &hero_info.dashing {
+        if let Action::Dash(dash_info) = &hero_info.action {
             let percent_completed = dash_info.percent_completed();
             // console_log!("percent_completed is {percent_completed}");
             let x = hero_info.position.x + dash_info.direction.x * 150.0 * percent_completed;
@@ -89,7 +91,7 @@ impl<'a> HeroView<'a> {
         ctx.fill_rect(start_x, start_y, width, bar_height);
     }
     fn draw_attack(&self, ctx: &CanvasRenderingContext2d) {
-        if let Some(attack_info) = &self.hero_info.attacking {
+        if let Action::Attack(attack_info) = &self.hero_info.action {
             let attack_view = AttackView::new(attack_info);
             attack_view.draw(ctx);
         }

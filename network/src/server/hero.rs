@@ -2,9 +2,8 @@ use nalgebra::{Point2, Vector2};
 use serde::{Deserialize, Serialize};
 
 use shared::action::Action;
-use shared::attack::{AttackInfo, RecoverInfo, SelectionInfo};
 use shared::character::CharacterSettings;
-use shared::hero::{DashCooldown, DashInfo, Moving};
+use shared::hero::Moving;
 
 // Updates about Hero we send from the server
 // to clients
@@ -18,11 +17,6 @@ pub struct Hero {
     pub moving: Moving,
     pub melee_attack_distance: f32,
     pub ranged_attack_distance: f32,
-    pub selected: Option<SelectionInfo>,
-    pub attacking: Option<AttackInfo>,
-    pub recovering: Option<RecoverInfo>,
-    pub dashing: Option<DashInfo>,
-    pub dash_cooldown: Option<DashCooldown>,
-    pub action: Option<Action>,
+    pub action: Action,
     pub character_settings: CharacterSettings,
 }

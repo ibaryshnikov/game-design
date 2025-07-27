@@ -248,11 +248,14 @@ fn circle_segment(
     let side_y = center_y + radius * start_angle.sin();
     ctx.move_to(center_x, center_y);
     ctx.line_to(side_x, side_y);
-    let counterclockwise = if start_angle > end_angle {
-        true
-    } else {
-        false
-    };
-    let _ = ctx.arc_with_anticlockwise(center_x, center_y, radius, start_angle, end_angle, counterclockwise);
+    let counterclockwise = start_angle > end_angle;
+    let _ = ctx.arc_with_anticlockwise(
+        center_x,
+        center_y,
+        radius,
+        start_angle,
+        end_angle,
+        counterclockwise,
+    );
     ctx.line_to(center_x, center_y);
 }

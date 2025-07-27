@@ -3,6 +3,8 @@ use iced_widget::canvas::{Frame, Path, Stroke, stroke};
 
 use game_core::hero::Hero;
 
+use shared::action::Action;
+
 use crate::attack::AttackView;
 
 pub struct HeroView<'a> {
@@ -20,7 +22,7 @@ impl<'a> HeroView<'a> {
         // self.draw_health_bar(frame);
     }
     fn draw_body(&self, frame: &mut Frame) {
-        if let Some(dash_info) = &self.hero_info.dashing {
+        if let Action::Dash(dash_info) = &self.hero_info.action {
             let percent_completed = dash_info.percent_completed();
             let position = iced_core::Point::new(
                 self.hero_info.position.x + dash_info.direction.x * 150.0 * percent_completed,
@@ -119,7 +121,7 @@ impl<'a> HeroView<'a> {
         frame.fill(&path, Color::from_rgb8(0, 255, 0));
     }
     fn draw_attack(&self, frame: &mut Frame) {
-        if let Some(attack_info) = &self.hero_info.attacking {
+        if let Action::Attack(attack_info) = &self.hero_info.action {
             let attack_view = AttackView::new(attack_info);
             attack_view.draw(frame);
         }

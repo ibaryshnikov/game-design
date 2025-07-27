@@ -2,6 +2,8 @@ use web_sys::CanvasRenderingContext2d;
 
 use game_core::boss::Boss;
 
+use shared::action::Action;
+
 use crate::attack::{AttackView /*ComplexAttackView*/};
 
 pub struct BossView<'a> {
@@ -56,11 +58,11 @@ impl<'a> BossView<'a> {
 
         // draw hp left as green
         ctx.set_fill_style_str("green");
-        let width = bar_width * self.boss_info.hp_left_percent() as f64;
+        let width = bar_width * info.hp_left_percent() as f64;
         ctx.fill_rect(x, y, width, bar_height);
     }
     pub fn draw_attack(&self, ctx: &CanvasRenderingContext2d) {
-        if let Some(attack_info) = &self.boss_info.attacking {
+        if let Action::Attack(attack_info) = &self.boss_info.action {
             let attack_view = AttackView::new(attack_info);
             attack_view.draw(ctx);
         }

@@ -82,7 +82,12 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) ->
     ws.on_upgrade(move |socket| handle_socket(id, socket, sender, client_counter))
 }
 
-async fn handle_socket(id: u128, socket: WebSocket, sender: GameLoopSender, client_counter: Arc<AtomicU16>) {
+async fn handle_socket(
+    id: u128,
+    socket: WebSocket,
+    sender: GameLoopSender,
+    client_counter: Arc<AtomicU16>,
+) {
     let clients_number = client_counter.fetch_add(1, Ordering::SeqCst);
     if clients_number >= MAX_CLIENTS {
         let _ = client_counter.fetch_sub(1, Ordering::SeqCst);
