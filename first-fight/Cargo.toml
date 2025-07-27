@@ -35,21 +35,21 @@ path = "../shared"
 
 [dependencies.iced_core]
 git = "https://github.com/iced-rs/iced"
-rev = "283d0e7"
+rev = "c710591"
 # path = "../../iced/core"
 
 [dependencies.iced_widget]
 git = "https://github.com/iced-rs/iced"
-rev = "283d0e7"
+rev = "c710591"
 # path = "../../iced/widget"
 features = ["wgpu", "canvas"]
 
 [dependencies.iced_winit]
 git = "https://github.com/iced-rs/iced"
-rev = "283d0e7"
+rev = "c710591"
 # path = "../../iced/winit"
 
 [dependencies.iced_wgpu]
 git = "https://github.com/iced-rs/iced"
-rev = "283d0e7"
+rev = "c710591"
 # path = "../../iced/wgpu"
