@@ -118,9 +118,6 @@ impl<'a> AttackView<'a> {
         match self.attack_info.kind {
             AttackKind::Pizza => self.draw_attacking_arc(frame),
             AttackKind::Circle => {
-                if self.attack_info.damage_done {
-                    return;
-                }
                 self.draw_attacking_circle(frame);
             }
         }

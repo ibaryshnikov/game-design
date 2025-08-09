@@ -10,7 +10,8 @@ use shared::attack::{
     ComplexAttack, ComplexAttackConstructor, RecoverInfo,
 };
 use shared::character::Character;
-use shared::npc::{NpcConstructor, load_attacks, load_complex_attacks};
+use shared::npc::{NpcConstructor, load_attacks};
+// use shared::npc::load_complex_attacks;
 use shared::position::{direction_from, distance_between};
 
 use crate::hero::Hero;
@@ -186,21 +187,10 @@ impl Boss {
         match &mut self.action {
             Action::Attack(attack) => {
                 attack.update(dt);
-                #[allow(clippy::single_match)] // will be extended later probably
-                match attack.order {
-                    AttackOrder::ProjectileFromCaster => {
-                        if !attack.damage_done {
-                            attack.check_damage_for_boss(characters);
-                        }
-                    }
-                    _ => (),
+                if !attack.damage_done {
+                    attack.check_damage_for_boss(characters);
                 }
                 if attack.completed() {
-                    if let AttackOrder::ProjectileFromCaster = attack.order {
-                        // do nothing, we did check_hit above
-                    } else {
-                        attack.check_damage_for_boss(characters);
-                    }
                     let recovery = RecoverInfo::new(attack.aftercast);
                     self.action = Action::Recovery(recovery);
                 }

@@ -235,12 +235,23 @@ impl Hero {
         match &mut self.action {
             Action::Attack(attack) => {
                 attack.update(dt);
-                if attack.completed() {
+                if !attack.damage_done {
                     attack.check_damage_for_hero(self.melee_attack_distance, npc);
+                }
+                if attack.completed() {
                     self.action = Action::Recovery(RecoverInfo::new(0));
                 }
             }
             Action::ComplexAttack(_attack) => {}
+            Action::Dash(dash) => {
+                dash.update(dt);
+                let speed =
+                    self.character_settings.dash_distance as f32 / dash.time_to_complete as f32;
+                self.position += dash.direction * speed * 10.0;
+                if dash.completed() {
+                    self.action = Action::DashCooldown(DashCooldown::new(200));
+                }
+            }
             other => other.update(dt),
         }
     }
@@ -253,6 +264,15 @@ impl Hero {
                 }
             }
             Action::ComplexAttack(_attack) => {}
+            Action::Dash(dash) => {
+                dash.update(dt);
+                let speed =
+                    self.character_settings.dash_distance as f32 / dash.time_to_complete as f32;
+                self.position += dash.direction * speed * 10.0;
+                if dash.completed() {
+                    self.action = Action::DashCooldown(DashCooldown::new(200));
+                }
+            }
             other => other.update(dt),
         }
     }
@@ -270,13 +290,7 @@ impl Hero {
         }
     }
     fn update_position(&mut self, dt: u128) {
-        if let Action::Dash(dash) = &mut self.action {
-            dash.update(dt);
-            if dash.completed() {
-                self.position += dash.direction * self.character_settings.dash_distance as f32;
-                self.action = Action::DashCooldown(DashCooldown::new(200));
-            }
-        } else if self.action.is_some() {
+        if self.action.is_some() {
             return;
         }
 

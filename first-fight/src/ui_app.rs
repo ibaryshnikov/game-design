@@ -90,7 +90,7 @@ fn load_level_by_id(id: u32) -> Level {
 impl UiApp {
     pub fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
         let level_list = load_level_list();
-        let boss_constructor = load_npc_by_id(1);
+        let _boss_constructor = load_npc_by_id(1);
         // let boss = Boss::from_constructor(Point2::new(512.0, 384.0), boss_constructor);
         let tmp_id = 0; // will receive a proper one from server when connected
         let hero = Hero::new(tmp_id, Point2::new(250.0, 200.0));

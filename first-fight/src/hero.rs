@@ -22,25 +22,6 @@ impl<'a> HeroView<'a> {
         // self.draw_health_bar(frame);
     }
     fn draw_body(&self, frame: &mut Frame) {
-        if let Action::Dash(dash_info) = &self.hero_info.action {
-            let percent_completed = dash_info.percent_completed();
-            let position = iced_core::Point::new(
-                self.hero_info.position.x + dash_info.direction.x * 150.0 * percent_completed,
-                self.hero_info.position.y + dash_info.direction.y * 150.0 * percent_completed,
-            );
-            let path = Path::new(|b| {
-                b.circle(position, 20.0);
-            });
-            frame.stroke(
-                &path,
-                Stroke {
-                    style: stroke::Style::Solid(Color::BLACK),
-                    width: 3.0,
-                    ..Stroke::default()
-                },
-            );
-            return;
-        }
         let path = Path::new(|b| {
             b.circle(
                 iced_core::Point::new(self.hero_info.position.x, self.hero_info.position.y),

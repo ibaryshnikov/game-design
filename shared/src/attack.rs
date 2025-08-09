@@ -323,7 +323,7 @@ impl AttackShape {
     pub fn from_constructor(
         constructor: AttackShapeConstructor,
         attacker_position: Point2<f32>,
-        target_position: Point2<f32>,
+        _target_position: Point2<f32>,
         position_offset: Point2<f32>,
         direction: Vector2<f32>,
     ) -> Self {
@@ -879,6 +879,7 @@ impl AttackInfo {
                 boss.get_size(),
             ) {
                 boss.receive_damage();
+                self.damage_done = true;
             }
         }
     }

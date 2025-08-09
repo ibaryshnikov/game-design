@@ -24,23 +24,6 @@ impl<'a> HeroView<'a> {
     }
     fn draw_body(&self, ctx: &CanvasRenderingContext2d) {
         let hero_info = &self.hero_info;
-        if let Action::Dash(dash_info) = &hero_info.action {
-            let percent_completed = dash_info.percent_completed();
-            // console_log!("percent_completed is {percent_completed}");
-            let x = hero_info.position.x + dash_info.direction.x * 150.0 * percent_completed;
-            let y = hero_info.position.y + dash_info.direction.y * 150.0 * percent_completed;
-            ctx.set_stroke_style_str("black");
-            ctx.begin_path();
-            let _ = ctx.arc(
-                x as f64,
-                y as f64,
-                hero_info.size as f64,
-                0.0,
-                2.0 * std::f64::consts::PI,
-            );
-            ctx.stroke();
-            return;
-        }
         let x = hero_info.position.x as f64;
         let y = hero_info.position.y as f64;
 

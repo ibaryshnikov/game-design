@@ -1,8 +1,7 @@
 use web_sys::CanvasRenderingContext2d;
 
-use shared::attack::{
-    AttackInfo, AttackKind, AttackOrder, AttackSequence, AttackShape, AttackState, ComplexAttack,
-};
+use shared::attack::{AttackInfo, AttackKind, AttackOrder, AttackState};
+// use shared::attack::{AttackSequence, AttackShape, ComplexAttack};
 
 // drawing a sword
 // const points = [
@@ -143,9 +142,6 @@ impl<'a> AttackView<'a> {
         match self.attack_info.kind {
             AttackKind::Pizza => self.draw_attacking_arc(ctx),
             AttackKind::Circle => {
-                if self.attack_info.damage_done {
-                    return;
-                }
                 self.draw_attacking_circle(ctx);
             }
         }
