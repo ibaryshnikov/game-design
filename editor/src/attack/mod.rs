@@ -54,7 +54,7 @@ impl Page {
             }
         }
     }
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         match self.current_page {
             CurrentPage::List => self.list.view().map(Message::List),
             CurrentPage::Item => {

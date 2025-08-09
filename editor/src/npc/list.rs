@@ -119,7 +119,7 @@ impl Page {
         }
         None
     }
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         let new_entry_row = row![
             text_input("New entry name", &self.new_entry_name)
                 .on_input(Message::ChangeNewEntryName),

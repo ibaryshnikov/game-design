@@ -95,7 +95,7 @@ impl Page {
         }
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         let mut contents = column![
             button("Reload from disk").on_press(Message::ReadFile),
             button("Save").on_press(Message::WriteFile),

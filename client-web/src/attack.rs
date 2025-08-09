@@ -4,6 +4,35 @@ use shared::attack::{
     AttackInfo, AttackKind, AttackOrder, AttackSequence, AttackShape, AttackState, ComplexAttack,
 };
 
+// drawing a sword
+// const points = [
+//     [-15, -20],
+//     [-5, -20],
+//     [-5, -70],
+//     [0, -75],
+//     [5, -70],
+//     [5, -20],
+//     [15, -20],
+//     [15, -15],
+//     [3, -15],
+//     [3, 0],
+//     [-3, 0],
+//     [-3, -15],
+//     [-15, -15],
+//     [-15, -20],
+// ];
+// drawAt({ x: 130, y: 120 }, points);
+// function drawAt(position, points) {
+//     ctx.rotate(0.1 * Math.PI);
+//     ctx.strokeStyle = 'red';
+//     ctx.beginPath();
+//     for ([x, y] of points) {
+//         ctx.lineTo(position.x + x, position.y + y);
+//     }
+//     ctx.closePath();
+//     ctx.stroke();
+// }
+
 // pub struct ComplexAttackView<'a> {
 //     pub complex_attack: &'a ComplexAttack,
 // }

@@ -147,7 +147,7 @@ impl Program for App {
         }
         Task::none()
     }
-    fn view(&self, _window: window::Id) -> Element<Message> {
+    fn view(&self, _window: window::Id) -> Element<'_, Message> {
         let selected_kind = self.selected_kind();
         let editor_kind_picker = row![
             EditorKind::Attack.make_button(&selected_kind),

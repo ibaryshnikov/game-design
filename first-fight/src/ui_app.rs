@@ -221,7 +221,7 @@ impl UiApp {
         }
     }
 
-    pub fn view(&self) -> Element<Message, Theme, Renderer> {
+    pub fn view(&self) -> Element<'_, Message, Theme, Renderer> {
         let el = match self.state {
             FightState::Pending => self.draw_pending().into(),
             FightState::LevelSelect => self.draw_level_selection().into(),
@@ -307,7 +307,7 @@ impl<Message> canvas::Program<Message> for UiApp {
 
 // methods for drawing
 impl UiApp {
-    fn draw_pending(&self) -> Row<Message> {
+    fn draw_pending(&self) -> Row<'_, Message> {
         let column = column![
             text("Welcome to the game!").size(30),
             button("Start").on_press(Message::SwitchToLevelSelect),
@@ -316,7 +316,7 @@ impl UiApp {
         .width(Length::Fill);
         row![column].align_y(Alignment::Center).height(Length::Fill)
     }
-    fn draw_level_selection(&self) -> Row<Message> {
+    fn draw_level_selection(&self) -> Row<'_, Message> {
         let mut level_list = column![].align_x(Alignment::Center).height(Length::Fill);
         for item in self.level_list.list.iter() {
             let level = button(text(&item.name)).on_press(Message::SelectLevel(item.id));
@@ -334,7 +334,7 @@ impl UiApp {
             .align_y(Alignment::Center)
             .height(Length::Fill)
     }
-    fn draw_win(&self) -> Row<Message> {
+    fn draw_win(&self) -> Row<'_, Message> {
         let column = column![
             text("You won, grab some loot!").size(30),
             button("Try again").on_press(Message::Retry),
@@ -343,7 +343,7 @@ impl UiApp {
         .width(Length::Fill);
         row![column].align_y(Alignment::Center).height(Length::Fill)
     }
-    fn draw_loss(&self) -> Row<Message> {
+    fn draw_loss(&self) -> Row<'_, Message> {
         let column = column![
             text("GAME OVER").size(40),
             button("Try again").on_press(Message::Retry),
@@ -352,7 +352,7 @@ impl UiApp {
         .width(Length::Fill);
         row![column].align_y(Alignment::Center).height(Length::Fill)
     }
-    fn draw_action(&self) -> Element<Message, Theme, Renderer> {
+    fn draw_action(&self) -> Element<'_, Message, Theme, Renderer> {
         Canvas::new(self)
             .width(Length::Fill)
             .height(Length::Fill)
