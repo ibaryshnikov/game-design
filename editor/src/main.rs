@@ -1,9 +1,7 @@
 use std::fmt::{self, Display};
 
 use iced::widget::{Button, Space, button, column, container, row};
-use iced::{Alignment, Element, Length, Renderer, Settings, Task, Theme, window};
-use iced_widget::graphics::{self, compositor};
-use iced_winit::Program;
+use iced::{Alignment, Element, Length, Task, Theme};
 
 mod attack;
 mod character;
@@ -15,18 +13,11 @@ mod utils;
 const DATA_PATH: &str = "../data/";
 
 fn main() {
-    let app = App {
-        state: EditorState::NotSelected,
-    };
-    let window_settings = Some(window::Settings::default());
-
-    iced_winit::program::run::<App, <Renderer as compositor::Default>::Compositor>(
-        Settings::default().into(),
-        graphics::Settings::default(),
-        window_settings,
-        app,
-    )
-    .expect("Should run the app");
+    iced::application(App::new, App::update, App::view)
+        .title(App::title)
+        .theme(App::theme)
+        .run()
+        .expect("Should run the app");
 }
 
 #[derive(Debug, Clone)]
@@ -97,17 +88,14 @@ struct App {
     state: EditorState,
 }
 
-impl Program for App {
-    type Executor = iced::executor::Default;
-    type Message = Message;
-    type Theme = Theme;
-    type Renderer = Renderer;
-    type Flags = Self;
-
-    fn new(app: Self) -> (Self, Task<Message>) {
+impl App {
+    fn new() -> (Self, Task<Message>) {
+        let app = App {
+            state: EditorState::NotSelected,
+        };
         (app, Task::none())
     }
-    fn title(&self, _window: window::Id) -> String {
+    fn title(&self) -> String {
         "Editor".into()
     }
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -147,7 +135,7 @@ impl Program for App {
         }
         Task::none()
     }
-    fn view(&self, _window: window::Id) -> Element<'_, Message> {
+    fn view(&self) -> Element<'_, Message> {
         let selected_kind = self.selected_kind();
         let editor_kind_picker = row![
             EditorKind::Attack.make_button(&selected_kind),
@@ -197,7 +185,7 @@ impl Program for App {
         .spacing(10)
         .into()
     }
-    fn theme(&self, _window: window::Id) -> Theme {
+    fn theme(&self) -> Theme {
         Theme::TokyoNight
     }
 }
