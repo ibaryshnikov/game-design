@@ -1,14 +1,9 @@
 {
-  "last_id": 2,
+  "last_id": 1,
   "list": [
     {
       "id": 1,
       "name": "First boss",
-      "status": "Active"
-    },
-    {
-      "id": 2,
-      "name": "Second boss",
       "status": "Active"
     }
   ]

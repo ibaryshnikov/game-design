@@ -1,9 +1,10 @@
-use iced::widget::{Row, button, column, container, pick_list, row, text, text_input};
+use iced::widget::{button, column, container, pick_list, row, text, text_input};
 use iced::{Alignment, Element};
 
 use shared::attack::{AttackConstructor, AttackKind, AttackOrder};
 
 use super::get_item_file_path;
+use crate::common::editor_row;
 
 pub struct Page {
     id: u32,
@@ -23,6 +24,7 @@ impl Page {
 pub enum Message {
     ReadFile,
     WriteFile,
+    ChangeName(String),
     ChangeDelay(String),
     ChangeTimeToComplete(String),
     ChangeAftercast(String),
@@ -31,17 +33,6 @@ pub enum Message {
     ChangeRangeTo(String),
     ChangeWidthAngle(String),
     ChangeKind(AttackKind),
-}
-
-fn read_file() -> Option<AttackConstructor> {
-    let contents = std::fs::read("data/attack.json").ok()?;
-    serde_json::from_slice(&contents).ok()
-}
-
-fn write_file(attack: &Option<AttackConstructor>) {
-    let Some(attack) = attack else { return };
-    let contents = serde_json::to_vec_pretty(attack).expect("Should encode AttackConstructor");
-    std::fs::write("data/attack.json", contents).expect("Should write AttackConstructor to a file");
 }
 
 fn load_by_id(id: u32) -> AttackConstructor {
@@ -56,13 +47,26 @@ pub fn save_by_id(attack: &AttackConstructor, id: u32) {
     std::fs::write(file_path, contents).expect("Should write AttackConstructor to a file");
 }
 
+pub(super) fn delete_file_by_id(id: u32) {
+    let file_path = get_item_file_path(id);
+    if let Err(e) = std::fs::remove_file(file_path) {
+        println!("Error removing file for attack {id}: {e}");
+    }
+}
+
 impl Page {
     pub fn update(&mut self, message: Message) {
         match message {
             Message::ReadFile => {
                 self.data = load_by_id(self.id);
             }
-            Message::WriteFile => save_by_id(&self.data, self.id),
+            Message::WriteFile => {
+                save_by_id(&self.data, self.id);
+                super::list::update_name_for(self.id, self.data.name.clone());
+            }
+            Message::ChangeName(value) => {
+                self.data.name = value;
+            }
             Message::ChangeDelay(value) => {
                 let parsed = value.parse::<u128>().ok();
                 let Some(parsed) = parsed else {
@@ -116,14 +120,21 @@ impl Page {
 
     pub fn view(&self) -> Element<'_, Message> {
         let mut contents = column![
-            button("Reload from disk").on_press(Message::ReadFile),
-            button("Save").on_press(Message::WriteFile),
+            row![
+                button("Reload from disk").on_press(Message::ReadFile),
+                button("Save").on_press(Message::WriteFile),
+            ]
+            .spacing(10)
         ]
         .align_x(Alignment::Center)
         .spacing(10);
 
         let attack_details_column = column![
-            row![text("Name:"), text(&self.data.name)].spacing(10),
+            text(format!("Id {}", self.id)),
+            editor_row(
+                "Name",
+                text_input("Attack name", &self.data.name).on_input(Message::ChangeName)
+            ),
             editor_row(
                 "Delay",
                 text_input("Attack delay", &format!("{}", self.data.delay))
@@ -169,17 +180,15 @@ impl Page {
                 )
                 .on_input(Message::ChangeWidthAngle),
             ),
-            row![
-                text("Kind"),
+            editor_row(
+                "Kind",
                 pick_list(
                     AttackKind::options(),
                     Some(self.data.kind.clone()),
                     Message::ChangeKind
                 )
                 .placeholder("Attack kind")
-            ]
-            .align_y(Alignment::Center)
-            .spacing(10),
+            ),
         ]
         .align_x(Alignment::Start)
         .spacing(10);
@@ -188,10 +197,4 @@ impl Page {
 
         contents.into()
     }
-}
-
-fn editor_row<'a, T: Into<Element<'a, Message>>>(label: &'a str, element: T) -> Row<'a, Message> {
-    row![text(label), element.into()]
-        .align_y(Alignment::Center)
-        .spacing(10)
 }

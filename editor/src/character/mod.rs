@@ -14,11 +14,11 @@ fn get_item_file_path(id: u32) -> String {
     format!("{FOLDER_PATH}{FILE_PREFIX}_{id}.json")
 }
 
-fn load_by_id(id: u32) -> CharacterSettings {
-    let file_path = get_item_file_path(id);
-    let contents = std::fs::read(file_path).expect("Should read CharacterSettings from a file");
-    serde_json::from_slice(&contents).expect("Should decode CharacterSettings")
-}
+// fn load_by_id(id: u32) -> CharacterSettings {
+//     let file_path = get_item_file_path(id);
+//     let contents = std::fs::read(file_path).expect("Should read CharacterSettings from a file");
+//     serde_json::from_slice(&contents).expect("Should decode CharacterSettings")
+// }
 
 pub fn save_by_id(attack: &CharacterSettings, id: u32) {
     let file_path = get_item_file_path(id);
@@ -70,8 +70,11 @@ impl Page {
     }
     pub fn view(&self) -> Element<'_, Message> {
         let mut contents = column![
-            button("Reload from disk").on_press(Message::ReadFile),
-            button("Save").on_press(Message::WriteFile),
+            row![
+                button("Reload from disk").on_press(Message::ReadFile),
+                button("Save").on_press(Message::WriteFile),
+            ]
+            .spacing(10)
         ]
         .align_x(Alignment::Center)
         .spacing(10);

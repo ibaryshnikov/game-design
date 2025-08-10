@@ -1,9 +1,0 @@
-{
-  "name": "Second level",
-  "npc_list": [
-    {
-      "id": 2,
-      "name": "Second boss"
-    }
-  ]
-}

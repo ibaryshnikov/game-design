@@ -1,9 +1,10 @@
-use iced::widget::{Row, button, column, row, text, text_input};
+use iced::widget::{button, column, text, text_input, row};
 use iced::{Alignment, Element};
 
 use shared::resource::ResourceConstructor;
 
 use super::get_item_file_path;
+use crate::common::editor_row;
 
 pub struct Page {
     id: u32,
@@ -26,18 +27,6 @@ pub enum Message {
     ChangeName(String),
 }
 
-fn read_file() -> Option<ResourceConstructor> {
-    let contents = std::fs::read("data/resource.json").ok()?;
-    serde_json::from_slice(&contents).ok()
-}
-
-fn write_file(resource: &Option<ResourceConstructor>) {
-    let Some(resource) = resource else { return };
-    let contents = serde_json::to_vec_pretty(resource).expect("Should encode ResourceConstructor");
-    std::fs::write("data/resource.json", contents)
-        .expect("Should write ResourceConstructor to a file");
-}
-
 fn load_by_id(id: u32) -> ResourceConstructor {
     let file_path = get_item_file_path(id);
     let contents = std::fs::read(file_path).expect("Should read ResourceConstructor from a file");
@@ -50,13 +39,23 @@ pub fn save_by_id(resource: &ResourceConstructor, id: u32) {
     std::fs::write(file_path, contents).expect("Should write ResourceConstructor to a file");
 }
 
+pub(super) fn delete_file_by_id(id: u32) {
+    let file_path = get_item_file_path(id);
+    if let Err(e) = std::fs::remove_file(file_path) {
+        println!("Error removing file for resource {id}: {e}");
+    }
+}
+
 impl Page {
     pub fn update(&mut self, message: Message) {
         match message {
             Message::ReadFile => {
                 self.data = load_by_id(self.id);
             }
-            Message::WriteFile => save_by_id(&self.data, self.id),
+            Message::WriteFile => {
+                save_by_id(&self.data, self.id);
+                super::list::update_name_for(self.id, self.data.name.clone());
+            }
             Message::ChangeName(value) => {
                 self.data.name = value;
             }
@@ -65,16 +64,22 @@ impl Page {
 
     pub fn view(&self) -> Element<'_, Message> {
         let mut contents = column![
-            button("Reload from disk").on_press(Message::ReadFile),
-            button("Save").on_press(Message::WriteFile),
+            row![
+                button("Reload from disk").on_press(Message::ReadFile),
+                button("Save").on_press(Message::WriteFile),
+            ]
+            .spacing(10)
         ]
         .align_x(Alignment::Center)
         .spacing(10);
 
-        let resource_details_column = column![editor_row(
-            "Resource name",
-            text_input("Resource name", &self.data.name).on_input(Message::ChangeName),
-        )]
+        let resource_details_column = column![
+            text(format!("Id {}", self.id)),
+            editor_row(
+                "Resource name",
+                text_input("Resource name", &self.data.name).on_input(Message::ChangeName)
+            ),
+        ]
         .align_x(Alignment::Start)
         .spacing(10)
         .width(500);
@@ -82,10 +87,4 @@ impl Page {
 
         contents.into()
     }
-}
-
-fn editor_row<'a, T: Into<Element<'a, Message>>>(label: &'a str, element: T) -> Row<'a, Message> {
-    row![text(label), element.into()]
-        .align_y(Alignment::Center)
-        .spacing(10)
 }

@@ -47,11 +47,10 @@ impl Page {
             Message::EditItem(id) => {
                 self.item = Some(item::Page::load_by_id(id));
                 self.current_page = CurrentPage::Item;
-            }
-            Message::OpenList => {
-                self.item = None;
-                self.current_page = CurrentPage::List;
-            }
+            } // Message::OpenList => {
+              //     self.item = None;
+              //     self.current_page = CurrentPage::List;
+              // }
         }
     }
     pub fn view(&self) -> Element<'_, Message> {
@@ -74,7 +73,7 @@ pub enum Message {
     Item(item::Message),
     List(list::Message),
     EditItem(u32),
-    OpenList,
+    // OpenList,
 }
 
 enum CurrentPage {

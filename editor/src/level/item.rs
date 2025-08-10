@@ -1,9 +1,10 @@
-use iced::widget::{button, column, container, pick_list, row, text};
+use iced::widget::{button, column, container, pick_list, row, text, text_input};
 use iced::{Alignment, Element};
 
 use shared::level::{Level, LevelNpcInfo};
 
 use super::get_item_file_path;
+use crate::common::editor_row;
 use crate::npc::list::{NpcInfo, load_available_npc_list};
 
 pub struct Page {
@@ -29,20 +30,10 @@ impl Page {
 pub enum Message {
     ReadFile,
     WriteFile,
+    ChangeName(String),
     SelectNpc(LevelNpcInfo),
     AddNpc(LevelNpcInfo),
     RemoveNpc(usize),
-}
-
-fn read_file() -> Option<Level> {
-    let contents = std::fs::read("data/level.json").ok()?;
-    serde_json::from_slice(&contents).ok()
-}
-
-fn write_file(level: &Option<Level>) {
-    let Some(level) = level else { return };
-    let contents = serde_json::to_vec_pretty(level).expect("Should encode Level");
-    std::fs::write("data/level.json", contents).expect("Should write Level to a file");
 }
 
 fn load_by_id(id: u32) -> Level {
@@ -55,6 +46,13 @@ pub fn save_by_id(level: &Level, id: u32) {
     let file_path = get_item_file_path(id);
     let contents = serde_json::to_vec_pretty(level).expect("Should encode Level");
     std::fs::write(file_path, contents).expect("Should write Level to a file");
+}
+
+pub(super) fn delete_file_by_id(id: u32) {
+    let file_path = get_item_file_path(id);
+    if let Err(e) = std::fs::remove_file(file_path) {
+        println!("Error removing file for level {id}: {e}");
+    }
 }
 
 fn make_picker_items(npc_list: Vec<NpcInfo>) -> Vec<LevelNpcInfo> {
@@ -71,7 +69,13 @@ impl Page {
             Message::ReadFile => {
                 self.data = load_by_id(self.id);
             }
-            Message::WriteFile => save_by_id(&self.data, self.id),
+            Message::WriteFile => {
+                save_by_id(&self.data, self.id);
+                super::list::update_name_for(self.id, self.data.name.clone());
+            }
+            Message::ChangeName(value) => {
+                self.data.name = value;
+            }
             Message::SelectNpc(npc) => {
                 self.selected = Some(npc);
             }
@@ -89,8 +93,11 @@ impl Page {
 
     pub fn view(&self) -> Element<'_, Message> {
         let mut contents = column![
-            button("Reload from disk").on_press(Message::ReadFile),
-            button("Save").on_press(Message::WriteFile),
+            row![
+                button("Reload from disk").on_press(Message::ReadFile),
+                button("Save").on_press(Message::WriteFile),
+            ]
+            .spacing(10)
         ]
         .align_x(Alignment::Center)
         .spacing(10);
@@ -115,6 +122,11 @@ impl Page {
         ]
         .spacing(10);
         let level_details_column = column![
+            text(format!("Id {}", self.id)),
+            editor_row(
+                "Name",
+                text_input("Level name", &self.data.name).on_input(Message::ChangeName)
+            ),
             text("Add npc:"),
             add_npc_row,
             text("Level npc list:"),

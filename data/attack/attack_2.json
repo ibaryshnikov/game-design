@@ -1,5 +1,5 @@
 {
-  "name": "Wide arc",
+  "name": "Wide arc CloseToFar",
   "position": [
     0.0,
     0.0
@@ -13,7 +13,10 @@
   "aftercast": 300,
   "kind": "Pizza",
   "order": "CloseToFar",
-  "range": {"from": 0, "to": 150.0},
+  "range": {
+    "from": 0.0,
+    "to": 150.0
+  },
   "width_angle": 1.7,
   "state": "Selected"
 }

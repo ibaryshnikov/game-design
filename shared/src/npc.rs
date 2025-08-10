@@ -3,7 +3,7 @@ use std::fmt::{self, Display};
 use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 
-use crate::attack::{AttackConstructor, ComplexAttackConstructor, RecoverInfo};
+use crate::attack::{AttackConstructor, ComplexAttackConstructor};
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct NpcConstructor {
@@ -37,10 +37,8 @@ impl NpcConstructor {
 pub struct NpcInfo {
     pub position: Point2<f32>,
     pub attacks: Vec<AttackConstructor>,
-    // pub attacking: Option<AttackView>,
-    recovering: Option<RecoverInfo>,
     pub hp: i32,
-    max_hp: i32,
+    pub max_hp: i32,
 }
 
 fn load_attack_by_id(id: u32) -> AttackConstructor {
@@ -71,14 +69,13 @@ pub fn load_complex_attacks(attack_info: Vec<NpcAttackInfo>) -> Vec<ComplexAttac
 }
 
 impl NpcInfo {
+    #[allow(unused)]
     fn from_constructor(constructor: NpcConstructor, position: Point2<f32>) -> Self {
         let NpcConstructor { attacks, hp, .. } = constructor;
         let attacks = load_attacks(attacks);
         NpcInfo {
             position,
             attacks,
-            // attacking: None,
-            recovering: None,
             hp,
             max_hp: hp,
         }

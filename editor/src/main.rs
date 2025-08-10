@@ -5,6 +5,7 @@ use iced::{Alignment, Element, Length, Task, Theme};
 
 mod attack;
 mod character;
+mod common;
 mod level;
 mod npc;
 mod resource;

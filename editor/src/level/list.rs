@@ -1,5 +1,5 @@
 use iced::widget::{
-    Container, button, column, container, horizontal_space, row, text, text_input, vertical_rule,
+    Container, button, checkbox, column, container, horizontal_space, row, text, vertical_rule,
 };
 use iced::{Alignment, Element, Length};
 
@@ -14,15 +14,13 @@ const FILE_PATH: &str = combine!(FOLDER_PATH, FILE_NAME);
 
 pub struct Page {
     data: LevelList,
-    new_entry_name: String,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     ReadFile,
-    ShowEntry(u32),
-    HideEntry(u32),
-    ChangeNewEntryName(String),
+    ToggleEntryStatus(u32, bool),
+    DeleteEntry(u32),
     CreateNew,
     Edit(u32),
 }
@@ -63,37 +61,67 @@ fn hide_entry(level_list: &mut LevelList, id: u32) {
     write_file(level_list);
 }
 
+fn delete_entry(data: &mut LevelList, id: u32) {
+    if let Some(index) = data.list.iter().position(|entry| entry.id == id) {
+        let attack = data.list.remove(index);
+        super::item::delete_file_by_id(attack.id);
+    }
+    let max_id = data
+        .list
+        .iter()
+        .map(|entry| entry.id)
+        .max()
+        .unwrap_or_default();
+    data.last_id = max_id;
+    write_file(data);
+}
+
 fn load_data() -> LevelList {
     read_file().unwrap_or_default()
 }
 
+pub(super) fn update_name_for(id: u32, name: String) {
+    let mut data = load_data();
+    for item in data.list.iter_mut() {
+        if item.id == id {
+            item.name = name;
+            break;
+        }
+    }
+    write_file(&data);
+}
+
 impl Page {
     pub fn load() -> Self {
-        Self {
-            data: load_data(),
-            new_entry_name: String::new(),
-        }
+        Self { data: load_data() }
     }
     pub fn update(&mut self, message: Message) -> Option<super::Message> {
         match message {
             Message::ReadFile => {
                 self.data = load_data();
             }
-            Message::ShowEntry(id) => show_entry(&mut self.data, id),
-            Message::HideEntry(id) => hide_entry(&mut self.data, id),
-            Message::ChangeNewEntryName(name) => self.new_entry_name = name,
+            Message::ToggleEntryStatus(id, is_active) => {
+                if is_active {
+                    show_entry(&mut self.data, id);
+                } else {
+                    hide_entry(&mut self.data, id);
+                }
+            }
+            Message::DeleteEntry(id) => delete_entry(&mut self.data, id),
             Message::CreateNew => {
                 self.data.last_id += 1;
-                let name = std::mem::take(&mut self.new_entry_name);
+                let id = self.data.last_id;
+                let name = String::new();
                 let new_level = Level::new(name.clone());
-                super::item::save_by_id(&new_level, self.data.last_id);
+                super::item::save_by_id(&new_level, id);
                 let new_entry = LevelInfo {
-                    id: self.data.last_id,
+                    id,
                     name,
                     status: EntryStatus::Active,
                 };
                 self.data.list.push(new_entry);
                 write_file(&self.data);
+                return Some(super::Message::EditItem(id));
             }
             Message::Edit(id) => {
                 return Some(super::Message::EditItem(id));
@@ -102,20 +130,16 @@ impl Page {
         None
     }
     pub fn view(&self) -> Element<'_, Message> {
-        let new_entry_row = row![
-            text_input("New entry name", &self.new_entry_name)
-                .on_input(Message::ChangeNewEntryName),
-            button("Create new").on_press(Message::CreateNew),
-        ];
         let heading_row = row![
             text(format!("Last item id: {}", self.data.last_id)),
             horizontal_space(),
             button("Refresh").on_press(Message::ReadFile),
-        ];
-        let mut details_column = column![heading_row, new_entry_row,]
-            .align_x(Alignment::Start)
-            .spacing(10);
-        for item in self.data.list.iter().filter(|item| item.status.is_active()) {
+            button("Create new").on_press(Message::CreateNew),
+        ]
+        .spacing(10);
+        let mut details_column = column![heading_row].align_x(Alignment::Start).spacing(10);
+        for item in self.data.list.iter() {
+            let id = item.id;
             let item_row = row![
                 text(format!("{}", item.id))
                     .width(portion(1))
@@ -123,11 +147,13 @@ impl Page {
                 make_rule(1, Alignment::Start),
                 text(&item.name).width(portion(5)),
                 make_rule(1, Alignment::End),
+                checkbox("", item.status.is_active())
+                    .on_toggle(move |value| Message::ToggleEntryStatus(id, value)),
                 button(text("Edit").align_x(Alignment::Center))
                     .on_press(Message::Edit(item.id))
                     .width(portion(3)),
                 button(text("Delete").align_x(Alignment::Center))
-                    .on_press(Message::HideEntry(item.id))
+                    .on_press(Message::DeleteEntry(item.id))
                     .width(portion(3)),
             ]
             .spacing(5)

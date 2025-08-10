@@ -1,10 +1,11 @@
-use iced::widget::{Row, Scrollable, button, column, container, pick_list, row, text, text_input};
+use iced::widget::{Scrollable, button, column, container, pick_list, row, text, text_input};
 use iced::{Alignment, Element};
 
 use shared::npc::{NpcAttackInfo, NpcConstructor};
 
 use super::get_item_file_path;
 use crate::attack::list::{AttackInfo, load_available_attack_list};
+use crate::common::editor_row;
 
 pub struct Page {
     id: u32,
@@ -29,21 +30,11 @@ impl Page {
 pub enum Message {
     ReadFile,
     WriteFile,
+    ChangeName(String),
     ChangeRespawnTime(String),
     SelectAttack(NpcAttackInfo),
     AddAttack(NpcAttackInfo),
     RemoveAttack(usize),
-}
-
-fn read_file() -> Option<NpcConstructor> {
-    let contents = std::fs::read("data/npc.json").ok()?;
-    serde_json::from_slice(&contents).ok()
-}
-
-fn write_file(npc: &Option<NpcConstructor>) {
-    let Some(npc) = npc else { return };
-    let contents = serde_json::to_vec_pretty(npc).expect("Should encode NpcConstructor");
-    std::fs::write("data/npc.json", contents).expect("Should write NpcConstructor to a file");
 }
 
 fn load_by_id(id: u32) -> NpcConstructor {
@@ -56,6 +47,13 @@ pub fn save_by_id(npc: &NpcConstructor, id: u32) {
     let file_path = get_item_file_path(id);
     let contents = serde_json::to_vec_pretty(npc).expect("Should encode NpcConstructor");
     std::fs::write(file_path, contents).expect("Should write NpcConstructor to a file");
+}
+
+pub(super) fn delete_file_by_id(id: u32) {
+    let file_path = get_item_file_path(id);
+    if let Err(e) = std::fs::remove_file(file_path) {
+        println!("Error removing file for npc {id}: {e}");
+    }
 }
 
 fn make_picker_items(npc_list: Vec<AttackInfo>) -> Vec<NpcAttackInfo> {
@@ -72,7 +70,13 @@ impl Page {
             Message::ReadFile => {
                 self.data = load_by_id(self.id);
             }
-            Message::WriteFile => save_by_id(&self.data, self.id),
+            Message::WriteFile => {
+                save_by_id(&self.data, self.id);
+                super::list::update_name_for(self.id, self.data.name.clone());
+            }
+            Message::ChangeName(value) => {
+                self.data.name = value;
+            }
             Message::ChangeRespawnTime(value) => {
                 let parsed = value.parse::<u128>().ok();
                 let Some(parsed) = parsed else {
@@ -97,8 +101,11 @@ impl Page {
 
     pub fn view(&self) -> Element<'_, Message> {
         let mut contents = column![
-            button("Reload from disk").on_press(Message::ReadFile),
-            button("Save").on_press(Message::WriteFile),
+            row![
+                button("Reload from disk").on_press(Message::ReadFile),
+                button("Save").on_press(Message::WriteFile),
+            ]
+            .spacing(10)
         ]
         .align_x(Alignment::Center)
         .spacing(10);
@@ -124,6 +131,11 @@ impl Page {
         .spacing(10);
 
         let npc_details_column = column![
+            text(format!("Id {}", self.id)),
+            editor_row(
+                "Name",
+                text_input("Npc name", &self.data.name).on_input(Message::ChangeName)
+            ),
             editor_row(
                 "Respawn time, s",
                 text_input("Respawn time, s", &format!("{}", self.data.respawn_time))
@@ -142,10 +154,4 @@ impl Page {
 
         contents.into()
     }
-}
-
-fn editor_row<'a, T: Into<Element<'a, Message>>>(label: &'a str, element: T) -> Row<'a, Message> {
-    row![text(label), element.into()]
-        .align_y(Alignment::Center)
-        .spacing(10)
 }
