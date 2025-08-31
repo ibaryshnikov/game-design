@@ -46,7 +46,7 @@ We can start uploading game files:
 # First we need to create a few folders on a remote server.
 # Connect with ssh and execute
 mkdir /game
-cd game
+cd /game
 mkdir bin
 mkdir client-web
 # Afterwards for convenience open a separate terminal.

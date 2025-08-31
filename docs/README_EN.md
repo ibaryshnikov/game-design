@@ -21,7 +21,7 @@ To make your game:
 
 Afterwards you would be able to play the game in single mode.
 For multiplayer mode:
-- set up a server (usually can get one from a VPS or hosting provider)
+- set up a remote server (usually can get one from a VPS or hosting provider)
 - upload game data and game server
 - run game server on a remote server
 - connect to the game server from one of the [clients](#client)
@@ -45,6 +45,8 @@ cd server
 cargo run
 ```
 
+To upload and run the game on a remote server use these [instructions](./SERVER_EN.md).
+
 
 ## Client
 
@@ -55,7 +57,7 @@ Below is a list of clients.
 
 ### Web client
 
-Client to play the game a web browser. At the moment of writing it supports only
+Client to play the game in a web browser. At the moment of writing it supports only
 multiplayer mode. To enter the game from the browser you need to run the server
 and navigate to a corresponding web page. For example, if you are testing it locally,
 the address would be `http://localhost:8080/game`. And if you are running
