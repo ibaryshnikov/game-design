@@ -1,13 +1,13 @@
 # Game creation project
 
 Contents:
-- [overview](overview)
-- [constructor](constructor)
-- [server](server)
-- [client](client):
-  - [web](web-client)
-  - [desktop](desktop-client)
-  - [mobile](mobile-client)
+- [overview](#overview)
+- [constructor](#constructor)
+- [server](#server)
+- [client](#client):
+  - [web](#web-client)
+  - [desktop](#desktop-client)
+  - [mobile](#mobile-client)
 
 
 ## Overview

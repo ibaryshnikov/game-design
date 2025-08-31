@@ -2,7 +2,7 @@
 
 Something like a 2d/3d slasher or even an MMO.
 
-More detailed description of the project as well as some documentation
+More detailed description as well as some documentation
 can be found at [docs EN](docs/README_EN.md) | [docs RU](docs/README_RU.md).
 
 
