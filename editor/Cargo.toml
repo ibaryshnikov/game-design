@@ -9,24 +9,18 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [dependencies.iced]
-git = "https://github.com/iced-rs/iced"
-rev = "9d56b48"
-# version = "0.13"
+version = "0.14"
 default-features = false
-features = ["advanced", "tokio", "wgpu"]
+features = ["advanced", "tokio", "wgpu", "x11"]
 
 [dependencies.iced_widget]
-git = "https://github.com/iced-rs/iced"
-rev = "9d56b48"
-# version = "0.13"
+version = "0.14"
 
 [dependencies.iced_winit]
-git = "https://github.com/iced-rs/iced"
-rev = "9d56b48"
-# version = "0.13"
+version = "0.14"
 
 [dependencies.tokio]
-version = "1.44"
+version = "1.49"
 features = ["rt-multi-thread"]
 
 [dependencies.shared]

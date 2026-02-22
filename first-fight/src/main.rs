@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use iced_wgpu::graphics::Viewport;
+use iced_wgpu::graphics::{Shell, Viewport};
 use iced_wgpu::{Engine, Renderer, wgpu};
 use iced_winit::clipboard::Clipboard;
 use iced_winit::core::{Event, Font, Pixels, Size, Theme, mouse, renderer, window};
@@ -130,7 +130,7 @@ impl ApplicationHandler<UserEvent> for App {
         let physical_size = window.inner_size();
         let viewport = Viewport::with_physical_size(
             Size::new(physical_size.width, physical_size.height),
-            window.scale_factor(),
+            window.scale_factor() as f32,
         );
         let clipboard = Clipboard::connect(window.clone());
 
@@ -155,6 +155,7 @@ impl ApplicationHandler<UserEvent> for App {
                     required_limits: wgpu::Limits::default(),
                     memory_hints: wgpu::MemoryHints::MemoryUsage,
                     trace: wgpu::Trace::Off,
+                    experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 })
                 .await
                 .expect("Request device");
@@ -187,7 +188,14 @@ impl ApplicationHandler<UserEvent> for App {
             },
         );
 
-        let engine = Engine::new(&adapter, device.clone(), queue.clone(), format, None);
+        let engine = Engine::new(
+            &adapter,
+            device.clone(),
+            queue.clone(),
+            format,
+            None,
+            Shell::headless(),
+        );
         let renderer = Renderer::new(engine, Font::default(), Pixels::from(16));
 
         event_loop.set_control_flow(ControlFlow::Wait);
@@ -253,7 +261,7 @@ impl ApplicationHandler<UserEvent> for App {
 
                     app_data.viewport = Viewport::with_physical_size(
                         Size::new(size.width, size.height),
-                        window.scale_factor(),
+                        window.scale_factor() as f32,
                     );
 
                     surface.configure(
@@ -307,7 +315,12 @@ impl ApplicationHandler<UserEvent> for App {
                             mouse_interaction, ..
                         } = state
                         {
-                            window.set_cursor(conversion::mouse_interaction(mouse_interaction));
+                            if let Some(icon) = conversion::mouse_interaction(mouse_interaction) {
+                                window.set_cursor(icon);
+                                window.set_cursor_visible(true);
+                            } else {
+                                window.set_cursor_visible(false);
+                            }
                         }
 
                         interface.draw(
@@ -378,7 +391,8 @@ impl ApplicationHandler<UserEvent> for App {
             _ => (),
         }
 
-        if let Some(event) = conversion::window_event(event, window.scale_factor(), self.modifiers)
+        if let Some(event) =
+            conversion::window_event(event, window.scale_factor() as f32, self.modifiers)
         {
             self.events.push(event);
         }

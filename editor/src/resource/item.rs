@@ -1,4 +1,4 @@
-use iced::widget::{button, column, text, text_input, row};
+use iced::widget::{button, column, row, text, text_input};
 use iced::{Alignment, Element};
 
 use shared::resource::ResourceConstructor;

@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use iced::widget::{Button, Space, button, column, container, row};
+use iced::widget::{Button, button, column, container, row, space};
 use iced::{Alignment, Element, Length, Task, Theme};
 
 mod attack;
@@ -175,7 +175,7 @@ impl App {
 
         column![
             editor_kind_picker,
-            Space::with_height(20),
+            space().height(20),
             container(contents)
                 .center_x(Length::Fill)
                 .width(Length::Fill)

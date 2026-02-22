@@ -1,6 +1,4 @@
-use iced::widget::{
-    Container, button, checkbox, column, container, horizontal_space, row, text, vertical_rule,
-};
+use iced::widget::{Container, button, checkbox, column, container, row, rule, space, text};
 use iced::{Alignment, Element, Length};
 use serde::{Deserialize, Serialize};
 
@@ -146,7 +144,7 @@ impl Page {
     pub fn view(&self) -> Element<'_, Message> {
         let heading_row = row![
             text(format!("Last item id: {}", self.data.last_id)),
-            horizontal_space(),
+            space::horizontal(),
             button("Refresh").on_press(Message::ReadFile),
             button("Create new").on_press(Message::CreateNew),
         ]
@@ -161,7 +159,7 @@ impl Page {
                 make_rule(1, Alignment::Start),
                 text(&item.name).width(portion(5)),
                 make_rule(1, Alignment::End),
-                checkbox("", item.status.is_active())
+                checkbox(item.status.is_active())
                     .on_toggle(move |value| Message::ToggleEntryStatus(id, value)),
                 button(text("Edit").align_x(Alignment::Center))
                     .on_press(Message::Edit(item.id))
@@ -186,7 +184,7 @@ fn portion(value: u16) -> Length {
 }
 
 fn make_rule(part: u16, alignment: Alignment) -> Container<'static, Message> {
-    container(vertical_rule(5))
+    container(rule::vertical(5))
         .align_x(alignment)
         .width(portion(part))
         .height(23)
